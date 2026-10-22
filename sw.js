@@ -1,5 +1,5 @@
 /* Offline support. Bump VERSION whenever app files change so phones pick up the update. */
-const VERSION = "wok-cart-1.2.0";
+const VERSION = "wok-cart-1.2.1";
 const SHELL = [
   "./", "./index.html", "./styles.css", "./config.js", "./recipes.js", "./sync.js", "./app.js", "./account.js",
   "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"
@@ -7,7 +7,7 @@ const SHELL = [
 const FONT_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com"];
 
 self.addEventListener("install", e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: "reload" })))).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", e => {
   e.waitUntil(caches.keys()
@@ -21,7 +21,8 @@ function networkFirst(req, cacheKey) {
     let settled = false;
     const fromCache = () => caches.match(cacheKey || req, { ignoreSearch: true });
     const t = setTimeout(async () => { const c = await fromCache(); if (c && !settled) { settled = true; resolve(c); } }, 2500);
-    fetch(req).then(res => {
+    // no-cache: always ask GitHub whether the file changed (a cheap 304 when it hasn't)
+    fetch(req, { cache: "no-cache" }).then(res => {
       if (res && res.ok) { const copy = res.clone(); caches.open(VERSION).then(c => c.put(cacheKey || req, copy)); }
       if (!settled) { settled = true; clearTimeout(t); resolve(res); }
     }).catch(async () => {

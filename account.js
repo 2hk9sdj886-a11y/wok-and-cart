@@ -1,6 +1,6 @@
 /* Account & sync sheet, backups, install prompt, service worker. */
 (function () {
-  const APP_VERSION = "1.2.0";
+  const APP_VERSION = "1.2.1";
 
   function accountSheet() {
     const signedIn = !!Sync.email;
@@ -37,7 +37,7 @@
         <textarea class="field bk" id="bkText" rows="5" aria-label="Backup text" placeholder="Paste backup text here"></textarea>
         <div class="actions"><button class="btn primary" id="bkLoad">Restore</button></div>
       </div>
-      <p class="fine">Version ${APP_VERSION}</p>`);
+      <div class="row" style="margin-top:14px"><span class="fine" style="margin:0">Version ${APP_VERSION}</span><button class="btn ghost" id="chkUpd">Check for updates</button></div>`);
 
     const f = document.getElementById("signin");
     if (f) f.onsubmit = async e => {
@@ -51,6 +51,11 @@
         err.textContent = /invalid/i.test(x.message) ? "That email and password don't match. Check them and try again." : (navigator.onLine ? x.message : "You're offline. Connect to sign in.");
         err.hidden = false; btn.disabled = false; btn.textContent = "Sign in";
       }
+    };
+    document.getElementById("chkUpd").onclick = async e => {
+      e.target.disabled = true; e.target.textContent = "Checking…";
+      try { if (window.__swReg) await window.__swReg.update(); } catch (x) {}
+      location.reload();
     };
     const sn = document.getElementById("syncNow"); if (sn) sn.onclick = async () => { sn.disabled = true; sn.textContent = "Syncing…"; await Sync.now(); accountSheet(); };
     const so = document.getElementById("signOut"); if (so) so.onclick = async () => { await Sync.signOut(); accountSheet(); };
@@ -100,7 +105,17 @@
 
   /* ---------- offline support ---------- */
   if ("serviceWorker" in navigator && location.protocol !== "file:") {
-    navigator.serviceWorker.register("sw.js").catch(e => console.warn("SW", e));
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloading = false;
+    // When a new version takes over, reload once so the new files are used right away.
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (!hadController || reloading) return;
+      reloading = true; location.reload();
+    });
+    navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(reg => {
+      window.__swReg = reg;
+      document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") reg.update().catch(() => {}); });
+    }).catch(e => console.warn("SW", e));
   }
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 })();
