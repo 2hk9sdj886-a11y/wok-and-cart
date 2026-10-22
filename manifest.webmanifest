@@ -1,0 +1,22 @@
+{
+  "name": "Wok & Cart",
+  "short_name": "Wok & Cart",
+  "description": "Flavor-forward dinners, an aisle-ordered Wimberley H-E-B grocery list, and a daily calorie log.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F2F4EF",
+  "theme_color": "#2F6B3A",
+  "categories": ["food", "health", "lifestyle"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Grocery list", "url": "./#list" },
+    { "name": "Calorie log", "url": "./#log" }
+  ]
+}

@@ -1,0 +1,100 @@
+/* ---------- Data ---------- */
+// Wimberley H-E-B (store 708) aisle guide
+const SECTIONS = {
+  produce:"Produce", deli:"Deli & Specialty Cheese",
+  a1:"Asian Foods, Vinegar, Peanut Butter, Honey, Tortillas", a2:"Pasta, Rice, Soup & Broth, Salsa, Condiments",
+  a3:"Canned Veg & Tomatoes, Spices, Oil, Baking", a4:"Coffee, Tea, Cereal", a5:"Chips, Crackers, Snacking Nuts",
+  a6:"Juice, Candy, Seasonal", a7:"Soda & Water", a8:"Pet, Paper Towels, Charcoal",
+  a9:"Foil, Wrap, Bath Tissue, Baby", a10:"Cleaning & Laundry", a11:"Health & Beauty",
+  meat:"Meat & Seafood", dairy:"Dairy & Eggs", frozen:"Frozen", beer:"Beer & Wine", rx:"Pharmacy", other:"Other"
+};
+const AISLE_NO = {a1:"1",a2:"2",a3:"3",a4:"4",a5:"5",a6:"6",a7:"7",a8:"8",a9:"9",a10:"10",a11:"11"};
+const DEFAULT_ORDER = ["produce","deli","a1","a2","a3","a4","a5","a6","a7","a8","a9","a10","a11","rx","beer","meat","dairy","frozen","other"];
+const OLD_SEC = {bakery:"a1",seafood:"meat",intl:"a1",pasta:"a2",canned:"a3",grains:"a2",spices:"a3",oils:"a3",snacks:"a5"};
+const STORE_SEC = {
+  "Lo mein or spaghetti noodles":"a1","Rice vinegar":"a1","Creamy peanut butter":"a1","Honey":"a1","Kalamata olives":"a1","Pickled sushi ginger":"a1","Mirin":"a1",
+  "Chipotles in adobo":"a2","Low-sodium chicken broth":"a2","Jasmine rice":"a2","Short-grain or jasmine rice":"a2","Long-grain white rice":"a2","Brown rice":"a2",
+  "Black beans":"a3","Cannellini beans":"a3","Diced tomatoes (fire-roasted)":"a3","Tomato paste (tube or can)":"a3","Vegetable oil":"a3","Olive oil":"a3",
+  "Cornstarch":"a3","Brown sugar":"a3","Sesame seeds":"a3","Ground cumin":"a3","Crushed red pepper":"a3","Dried oregano":"a3","Cajun seasoning":"a3",
+  "Unsalted roasted peanuts":"a5","Kimchi":"produce","Extra-firm tofu":"produce",
+  "Parmigiano Reggiano":"deli","Pecorino Romano":"deli","Feta crumbles":"deli","Cotija cheese":"deli",
+  "Vodka (optional)":"other"
+};
+// [name, qty, unit, section, pantry?]
+const RECIPES = [
+ {id:"beef-broccoli", name:"Ginger Beef & Broccoli", cat:"stir", kcal:510, serves:4, mins:25, heat:1,
+  blurb:"Flank steak seared hot, glossy oyster-ginger sauce, lots of broccoli over jasmine rice.",
+  ing:[["Flank steak",1.25,"lb","meat"],["Broccoli crowns",1.5,"lb","produce"],["Fresh ginger",1,"knob","produce"],["Garlic",1,"head","produce"],["Green onions",1,"bunch","produce"],
+       ["Oyster sauce",3,"tbsp","intl",1],["Low-sodium soy sauce",3,"tbsp","intl",1],["Cornstarch",1,"tbsp","spices",1],["Jasmine rice",1.5,"cup dry","grains",1],["Vegetable oil",2,"tbsp","oils",1]],
+  steps:["Slice steak thin against the grain; toss with 1 tsp cornstarch and 1 tbsp soy.","Whisk oyster sauce, remaining soy, 2 tsp cornstarch, 1/2 cup water, grated ginger and garlic.","Sear beef in a ripping-hot wok in two batches; remove.","Stir-fry broccoli 3 min with a splash of water, add sauce and beef, toss until glossy.","Serve over rice with sliced green onions."]},
+ {id:"kung-pao", name:"Kung Pao Chicken", cat:"stir", kcal:480, serves:4, mins:30, heat:3,
+  blurb:"Tingly, sweet-sour, and crunchy with peanuts and dried chiles. Bell pepper and zucchini stretch it.",
+  ing:[["Boneless skinless chicken thighs",1.5,"lb","meat"],["Red bell pepper",1,"each","produce"],["Zucchini",1,"each","produce"],["Green onions",1,"bunch","produce"],["Garlic",1,"head","produce"],["Fresh ginger",1,"knob","produce"],
+       ["Dried red chiles (whole)",1,"bag","intl"],["Sichuan peppercorns",1,"jar","intl"],["Unsalted roasted peanuts",0.33,"cup","snacks"],["Rice vinegar",2,"tbsp","oils",1],["Low-sodium soy sauce",3,"tbsp","intl",1],["Hoisin sauce",1,"tbsp","intl",1],["Cornstarch",1,"tbsp","spices",1],["Jasmine rice",1.5,"cup dry","grains",1],["Vegetable oil",2,"tbsp","oils",1]],
+  steps:["Cube chicken; toss with 1 tbsp soy and 2 tsp cornstarch.","Mix sauce: 2 tbsp soy, vinegar, hoisin, 1 tsp cornstarch, 3 tbsp water.","Toast 8–10 chiles and 1 tsp Sichuan pepper in oil 30 sec; add chicken and cook through.","Add pepper, zucchini, garlic, ginger; 2 min. Pour in sauce, add peanuts.","Finish with green onions; serve with rice."]},
+ {id:"pad-krapow", name:"Thai Basil Pork (Pad Krapow)", cat:"stir", kcal:560, serves:4, mins:20, heat:3,
+  blurb:"Fast weeknight Thai street food: garlicky chile pork, a fistful of basil, a fried egg on top.",
+  ing:[["Lean ground pork",1,"lb","meat"],["Thai or sweet basil",2,"bunch","produce"],["Thai chiles or serranos",4,"each","produce"],["Garlic",1,"head","produce"],["Shallots",2,"each","produce"],["Green beans",8,"oz","produce"],
+       ["Fish sauce",1,"tbsp","intl",1],["Oyster sauce",2,"tbsp","intl",1],["Low-sodium soy sauce",1,"tbsp","intl",1],["Large eggs",4,"each","dairy"],["Jasmine rice",1.5,"cup dry","grains",1],["Vegetable oil",2,"tbsp","oils",1]],
+  steps:["Pound or finely chop garlic, chiles and shallots.","Stir-fry aromatics 30 sec; add pork and cook until browned and crisp at edges.","Add chopped green beans, fish sauce, oyster sauce, soy and 1 tsp sugar; 3 min.","Off heat, fold in basil until wilted.","Serve over rice with a crispy fried egg."]},
+ {id:"shrimp-lo-mein", name:"Spicy Garlic Shrimp Lo Mein", cat:"noodle", kcal:510, serves:4, mins:25, heat:2,
+  blurb:"Chewy noodles, snappy shrimp, cabbage and carrots in a garlic-chili sauce.",
+  ing:[["Raw shrimp, peeled (31–40)",1,"lb","seafood"],["Lo mein or spaghetti noodles",8,"oz","intl"],["Napa cabbage",0.5,"head","produce"],["Carrots",2,"each","produce"],["Shiitake mushrooms",4,"oz","produce"],["Green onions",1,"bunch","produce"],["Garlic",1,"head","produce"],
+       ["Chili garlic sauce",1,"tbsp","intl",1],["Low-sodium soy sauce",3,"tbsp","intl",1],["Oyster sauce",1,"tbsp","intl",1],["Toasted sesame oil",2,"tsp","intl",1],["Vegetable oil",1,"tbsp","oils",1]],
+  steps:["Cook noodles 1 min short of package time; drain and toss with sesame oil.","Mix soy, oyster sauce, chili garlic sauce and 1 tsp sugar.","Sear shrimp 1 min per side; remove.","Stir-fry mushrooms, carrots, cabbage and garlic 3 min.","Add noodles, sauce and shrimp; toss over high heat. Top with green onions."]},
+ {id:"peanut-noodles", name:"Sesame Peanut Chicken Noodles", cat:"noodle", kcal:540, serves:4, mins:25, heat:1,
+  blurb:"Creamy peanut-lime sauce, crunchy cucumbers and edamame. Good warm or cold the next day.",
+  ing:[["Boneless skinless chicken breast",1,"lb","meat"],["Whole wheat spaghetti",8,"oz","pasta"],["English cucumber",1,"each","produce"],["Carrots",2,"each","produce"],["Limes",2,"each","produce"],["Cilantro",1,"bunch","produce"],["Fresh ginger",1,"knob","produce"],
+       ["Creamy peanut butter",0.33,"cup","snacks",1],["Low-sodium soy sauce",3,"tbsp","intl",1],["Sriracha",1,"tbsp","intl",1],["Toasted sesame oil",1,"tbsp","intl",1],["Honey",1,"tbsp","spices",1],["Shelled edamame",1,"bag","frozen"]],
+  steps:["Poach chicken in simmering salted water 12–14 min; shred.","Cook spaghetti, adding edamame for the last 2 min; rinse briefly.","Whisk peanut butter, soy, lime juice, honey, sriracha, sesame oil, grated ginger and hot water to thin.","Toss noodles with sauce, chicken, julienned cucumber and carrot.","Top with cilantro and extra lime."]},
+ {id:"bulgogi-bowl", name:"Korean Beef Bulgogi Bowl", cat:"bowl", kcal:590, serves:4, mins:30, heat:1,
+  blurb:"Sweet-savory beef with pear and garlic, quick-pickled cucumbers, kimchi, and rice.",
+  ing:[["Thin-sliced ribeye or sirloin",1.25,"lb","meat"],["Asian pear",1,"each","produce"],["Garlic",1,"head","produce"],["Green onions",1,"bunch","produce"],["English cucumber",1,"each","produce"],["Carrots",2,"each","produce"],["Baby spinach",5,"oz","produce"],
+       ["Kimchi",1,"jar","intl"],["Low-sodium soy sauce",0.33,"cup","intl",1],["Toasted sesame oil",1,"tbsp","intl",1],["Rice vinegar",3,"tbsp","oils",1],["Brown sugar",1,"tbsp","spices",1],["Sesame seeds",1,"tbsp","spices",1],["Short-grain or jasmine rice",1.5,"cup dry","grains",1]],
+  steps:["Blend half the pear, garlic, soy, sugar and sesame oil; marinate beef 15 min.","Quick-pickle sliced cucumber in rice vinegar with a pinch of salt and sugar.","Sear beef in batches over high heat until caramelized.","Wilt spinach in the same pan; shred carrots.","Build bowls: rice, beef, spinach, carrots, cucumbers, kimchi, sesame seeds."]},
+ {id:"chipotle-bowl", name:"Chipotle Chicken Burrito Bowl", cat:"bowl", kcal:550, serves:4, mins:35, heat:2,
+  blurb:"Smoky adobo chicken, cilantro-lime rice, black beans, corn, pico, and a little cotija.",
+  ing:[["Boneless skinless chicken thighs",1.5,"lb","meat"],["Chipotles in adobo",1,"can","intl"],["Limes",3,"each","produce"],["Cilantro",1,"bunch","produce"],["Roma tomatoes",3,"each","produce"],["White onion",1,"each","produce"],["Jalapeño",1,"each","produce"],["Avocado",1,"each","produce"],["Romaine hearts",1,"pack","produce"],
+       ["Black beans",1,"can","canned"],["Frozen roasted corn",1,"bag","frozen"],["Cotija cheese",4,"oz","dairy"],["Ground cumin",1,"tsp","spices",1],["Long-grain white rice",1.5,"cup dry","grains",1]],
+  steps:["Blend 2 chipotles + 1 tbsp adobo, juice of 1 lime, cumin, garlic, salt; marinate chicken.","Cook rice; fold in lime zest, juice and chopped cilantro.","Grill or sear chicken 5–6 min per side; rest and chop.","Make pico: tomato, onion, jalapeño, cilantro, lime, salt. Warm beans and corn.","Build bowls over romaine and rice; top with avocado and cotija."]},
+ {id:"teriyaki-salmon", name:"Teriyaki Salmon Bowl", cat:"bowl", kcal:560, serves:4, mins:25, heat:0,
+  blurb:"Sticky homemade teriyaki on roasted salmon with charred broccoli, edamame, and pickled ginger.",
+  ing:[["Salmon fillets",1.5,"lb","seafood"],["Broccoli crowns",1,"lb","produce"],["Green onions",1,"bunch","produce"],["Fresh ginger",1,"knob","produce"],["Garlic",1,"head","produce"],
+       ["Mirin",3,"tbsp","intl"],["Pickled sushi ginger",1,"jar","intl"],["Low-sodium soy sauce",0.25,"cup","intl",1],["Honey",2,"tbsp","spices",1],["Cornstarch",1,"tsp","spices",1],["Sesame seeds",1,"tbsp","spices",1],["Shelled edamame",1,"bag","frozen"],["Jasmine rice",1.5,"cup dry","grains",1]],
+  steps:["Simmer soy, mirin, honey, ginger and garlic 3 min; thicken with cornstarch slurry.","Roast broccoli at 425°F for 15 min.","Brush salmon with teriyaki; roast alongside for the last 10–12 min.","Steam edamame.","Bowls: rice, salmon, broccoli, edamame, extra sauce, sesame, green onion, pickled ginger."]},
+ {id:"gochujang-tofu", name:"Crispy Gochujang Tofu Bowl", cat:"bowl", kcal:470, serves:4, mins:35, heat:2,
+  blurb:"Cornstarch-crisped tofu glazed in sweet-hot gochujang with sesame slaw. Meatless and filling.",
+  ing:[["Extra-firm tofu",2,"block","produce"],["Red cabbage",0.5,"head","produce"],["Carrots",2,"each","produce"],["Green onions",1,"bunch","produce"],["Garlic",1,"head","produce"],
+       ["Gochujang",1,"tub","intl"],["Low-sodium soy sauce",2,"tbsp","intl",1],["Toasted sesame oil",1,"tbsp","intl",1],["Rice vinegar",2,"tbsp","oils",1],["Honey",2,"tbsp","spices",1],["Cornstarch",3,"tbsp","spices",1],["Brown rice",1.5,"cup dry","grains",1],["Vegetable oil",2,"tbsp","oils",1]],
+  steps:["Press tofu 15 min; cube and toss with cornstarch and salt.","Pan-fry or air-fry at 400°F until crisp, about 15 min.","Simmer 3 tbsp gochujang, soy, honey, garlic and 2 tbsp water until glossy; toss tofu.","Slaw: shredded cabbage, carrot, vinegar, sesame oil, pinch of salt.","Bowls: brown rice, tofu, slaw, green onions."]},
+ {id:"vodka-chicken", name:"Spicy Vodka Rigatoni with Chicken", cat:"pasta", kcal:620, serves:4, mins:35, heat:2,
+  blurb:"Creamy, chile-flecked tomato sauce, lightened with half-and-half, plus seared chicken for protein.",
+  ing:[["Boneless skinless chicken breast",1,"lb","meat"],["Rigatoni",12,"oz","pasta"],["Tomato paste (tube or can)",1,"can","canned"],["Shallots",2,"each","produce"],["Garlic",1,"head","produce"],["Fresh basil",1,"pack","produce"],
+       ["Half-and-half",0.75,"cup","dairy"],["Parmigiano Reggiano",3,"oz","dairy"],["Crushed red pepper",1,"tsp","spices",1],["Olive oil",2,"tbsp","oils",1],["Vodka (optional)",0.25,"cup","other"]],
+  steps:["Season and sear chicken 6 min per side; rest and slice.","Boil rigatoni in salted water; reserve 1 cup pasta water.","Sauté shallot and garlic in olive oil; add 1/3 cup tomato paste and red pepper, cook until brick red.","Deglaze with vodka; stir in half-and-half and a splash of pasta water.","Toss pasta with sauce and parmesan; top with chicken and basil."]},
+ {id:"shrimp-orzo", name:"Lemon Garlic Shrimp Orzo", cat:"pasta", kcal:490, serves:4, mins:25, heat:1,
+  blurb:"One pan, bright and garlicky, with spinach, cherry tomatoes, and a little feta.",
+  ing:[["Raw shrimp, peeled (31–40)",1,"lb","seafood"],["Orzo",1.25,"cup","pasta"],["Lemons",2,"each","produce"],["Cherry tomatoes",1,"pint","produce"],["Baby spinach",5,"oz","produce"],["Garlic",1,"head","produce"],["Fresh parsley",1,"bunch","produce"],
+       ["Low-sodium chicken broth",32,"oz","canned"],["Feta crumbles",4,"oz","dairy"],["Unsalted butter",1,"tbsp","dairy",1],["Olive oil",1,"tbsp","oils",1],["Crushed red pepper",0.5,"tsp","spices",1]],
+  steps:["Sear seasoned shrimp in olive oil 1 min per side; remove.","Toast orzo with butter and garlic 2 min.","Add 3 cups broth; simmer, stirring, 10–12 min until creamy.","Stir in tomatoes, spinach, lemon zest and juice.","Return shrimp; top with feta, parsley and red pepper."]},
+ {id:"sausage-rigatoni", name:"Turkey Sausage & Kale Orecchiette", cat:"pasta", kcal:560, serves:4, mins:30, heat:2,
+  blurb:"Spicy Italian turkey sausage, garlicky kale, white beans, lemon, and pecorino.",
+  ing:[["Hot Italian turkey sausage",1,"lb","meat"],["Orecchiette",12,"oz","pasta"],["Lacinato kale",1,"bunch","produce"],["Lemons",1,"each","produce"],["Garlic",1,"head","produce"],["Yellow onion",1,"each","produce"],
+       ["Cannellini beans",1,"can","canned"],["Low-sodium chicken broth",32,"oz","canned"],["Pecorino Romano",2,"oz","dairy"],["Olive oil",1,"tbsp","oils",1],["Crushed red pepper",0.5,"tsp","spices",1]],
+  steps:["Brown sausage, broken up, in olive oil; add onion and garlic.","Boil pasta; reserve 1 cup water.","Add chopped kale and 1/2 cup broth to sausage; cover 4 min.","Stir in drained beans, pasta, lemon juice and splashes of pasta water.","Finish with pecorino and red pepper."]},
+ {id:"cajun-pasta", name:"Cajun Chicken Penne", cat:"pasta", kcal:590, serves:4, mins:30, heat:2,
+  blurb:"Blackened chicken, peppers and onions in a light Cajun cream sauce. Big flavor, no heavy cream.",
+  ing:[["Boneless skinless chicken breast",1.25,"lb","meat"],["Whole wheat penne",12,"oz","pasta"],["Red bell pepper",1,"each","produce"],["Green bell pepper",1,"each","produce"],["Yellow onion",1,"each","produce"],["Garlic",1,"head","produce"],["Green onions",1,"bunch","produce"],
+       ["Cajun seasoning",2,"tbsp","spices",1],["Diced tomatoes (fire-roasted)",1,"can","canned"],["Light cream cheese",3,"oz","dairy"],["Parmigiano Reggiano",2,"oz","dairy"],["Low-sodium chicken broth",32,"oz","canned"],["Olive oil",1,"tbsp","oils",1]],
+  steps:["Rub chicken with Cajun seasoning; sear 6 min per side and slice.","Boil penne.","Sauté peppers, onion, garlic 5 min; add tomatoes and 1 cup broth.","Melt in cream cheese and parmesan until smooth.","Toss pasta and chicken in sauce; top with green onions."]},
+ {id:"greek-bowl", name:"Greek Chicken Rice Bowl", cat:"bowl", kcal:510, serves:4, mins:30, heat:0,
+  blurb:"Lemon-oregano chicken, herby rice, crunchy veg, and a garlicky yogurt tzatziki.",
+  ing:[["Boneless skinless chicken thighs",1.5,"lb","meat"],["Lemons",2,"each","produce"],["English cucumber",1,"each","produce"],["Cherry tomatoes",1,"pint","produce"],["Red onion",1,"each","produce"],["Garlic",1,"head","produce"],["Fresh dill",1,"pack","produce"],
+       ["Nonfat Greek yogurt",1,"cup","dairy"],["Feta crumbles",4,"oz","dairy"],["Kalamata olives",1,"jar","intl"],["Dried oregano",1,"tbsp","spices",1],["Olive oil",2,"tbsp","oils",1],["Long-grain white rice",1.5,"cup dry","grains",1]],
+  steps:["Marinate chicken in lemon, olive oil, oregano and garlic 15 min.","Cook rice; fold in lemon zest and chopped dill.","Tzatziki: yogurt, grated cucumber, garlic, dill, lemon, salt.","Grill or sear chicken 5–6 min per side; slice.","Bowls: rice, chicken, tomatoes, cucumber, red onion, olives, feta, tzatziki."]},
+];
+const CATS = [["all","All"],["stir","Stir fry"],["bowl","Rice bowls"],["pasta","Pasta"],["noodle","Noodles"],["light","Under 520 kcal"]];
+const GEN = {intl:"a1",pasta:"a2",canned:"a3",grains:"a2",spices:"a3",oils:"a3",snacks:"a5",seafood:"meat",bakery:"a1"};
+RECIPES.forEach(r => r.ing.forEach(i => { i[3] = STORE_SEC[i[0]] || GEN[i[3]] || i[3]; }));
+const recipeById = id => RECIPES.find(r => r.id === id);
+
