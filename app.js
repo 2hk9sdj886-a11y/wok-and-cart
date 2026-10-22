@@ -68,7 +68,7 @@ function logMeal(name, kcal, servings, dateK, mealId){
 /* ---------- Meals view ---------- */
 let mealFilter = "all";
 function renderMeals(){
-  const list = RECIPES.filter(r => mealFilter === "all" ? true : mealFilter === "light" ? r.kcal < 520 : r.cat === mealFilter)
+  const list = RECIPES.filter(r => mealFilter === "all" ? true : mealFilter === "light" ? r.kcal < 520 : mealFilter === "veg" ? r.veg : r.cat === mealFilter)
     .slice().sort((a,b) => mealFilter === "light" ? a.kcal - b.kcal : 0);
   const heat = h => h ? `<span class="tag heat">${["","Mild heat","Medium heat","Spicy"][h]}</span>` : "";
   $("#v-meals").innerHTML = `
@@ -85,7 +85,7 @@ function renderMeals(){
             <div class="kcal"><b>${r.kcal}</b><small>kcal/serving</small></div>
           </div>
           <div class="meta">
-            <span class="tag">${r.mins} min</span><span class="tag">Serves ${r.serves}</span>${heat(r.heat)}
+            ${r.veg ? `<span class="tag on">Meatless</span>` : ""}<span class="tag">${r.mins} min</span><span class="tag">Serves ${r.serves}</span>${heat(r.heat)}
             ${S.onList[r.id] ? `<span class="tag on">On list</span>` : ""}
           </div>
           <p class="blurb">${esc(r.blurb)}</p>

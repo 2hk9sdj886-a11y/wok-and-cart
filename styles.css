@@ -27,7 +27,7 @@ body{margin:0}
 [hidden]{display:none!important}
 img{max-width:100%}
 code{font-family:var(--mono);font-size:.88em;background:var(--sunk);padding:1px 5px;border-radius:4px}
-body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased;font-feature-settings:"cv11","ss01";font-variant-numeric:tabular-nums}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
 button,input,select{font:inherit;color:inherit}
 button{cursor:pointer}
