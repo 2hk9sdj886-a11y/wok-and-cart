@@ -1,6 +1,6 @@
 /* Account & sync sheet, backups, install prompt, service worker. */
 (function () {
-  const APP_VERSION = "1.0.0";
+  const APP_VERSION = "1.0.1";
 
   function accountSheet() {
     const signedIn = !!Sync.email;
@@ -11,6 +11,7 @@
       body = `
         <p class="blurb">Signed in as <b>${esc(Sync.email)}</b>. Your list, log and settings sync to every device signed in to this account.</p>
         <p class="acct-status" id="acctStatus">${esc(syncState.text)}</p>
+        ${Sync.lastError ? `<div class="sync-err"><b>What went wrong</b><p>${esc(Sync.lastError.hint || "Supabase returned an error.")}</p><code>${esc(Sync.lastError.raw)}</code></div>` : ""}
         <div class="actions"><button class="btn primary" id="syncNow">Sync now</button><button class="btn warn" id="signOut">Sign out</button></div>`;
     } else {
       body = `
@@ -51,7 +52,7 @@
         err.hidden = false; btn.disabled = false; btn.textContent = "Sign in";
       }
     };
-    const sn = document.getElementById("syncNow"); if (sn) sn.onclick = () => Sync.now();
+    const sn = document.getElementById("syncNow"); if (sn) sn.onclick = async () => { sn.disabled = true; sn.textContent = "Syncing…"; await Sync.now(); accountSheet(); };
     const so = document.getElementById("signOut"); if (so) so.onclick = async () => { await Sync.signOut(); accountSheet(); };
 
     document.getElementById("bkCopy").onclick = async () => {

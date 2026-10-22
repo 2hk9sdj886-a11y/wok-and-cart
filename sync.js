@@ -20,6 +20,17 @@
   let meta = read(META_KEY, { baseRev: null, dirty: false });
   let getState = () => ({}), setState = () => {}, onStatus = () => {};
   let busy = false, again = false, timer = null, poll = null, wired = false;
+  let lastError = null;
+
+  function explain(e) {
+    const raw = String((e && e.message) || e);
+    let hint = "";
+    if (/PGRST205|PGRST202|does not exist|schema cache|404/.test(raw)) hint = "The planner_state table wasn't found. Run supabase/schema.sql in Supabase's SQL Editor, and check that the Data API is enabled.";
+    else if (/42501|permission denied|row-level security|403/.test(raw)) hint = "Database permissions blocked the save. Re-run supabase/schema.sql (the policy and grant lines).";
+    else if (/401|JWT|jwt/.test(raw)) hint = "Your sign-in wasn't accepted by the database. Sign out and sign in again.";
+    else if (/Failed to fetch|NetworkError|Load failed/.test(raw)) hint = "Couldn't reach Supabase. Check your connection.";
+    return { hint, raw: raw.slice(0, 400) };
+  }
 
   const configured = () => !!(BASE && KEY);
   const saveMeta = () => write(META_KEY, meta);
@@ -136,10 +147,12 @@
       } else if (!remote) {
         meta.dirty = true; saveMeta(); again = true;   // first sign-in on an empty account: upload this device
       }
+      lastError = null;
       status("ok", "Synced");
     } catch (e) {
       if (pushing) { meta.dirty = true; saveMeta(); }
-      if (session) status("error", navigator.onLine ? "Couldn't sync. Will retry." : "Offline");
+      lastError = explain(e);
+      if (session) status("error", navigator.onLine ? "Couldn't sync. Tap for details." : "Offline");
       console.warn("[sync]", e);
     } finally {
       busy = false;
@@ -152,6 +165,7 @@
   window.Sync = {
     configured,
     get email() { return session && session.user && session.user.email; },
+    get lastError() { return lastError; },
     init(opts) {
       getState = opts.getState; setState = opts.setState; onStatus = opts.onStatus || onStatus;
       if (!configured()) { status("local", "Saved on this phone"); return; }

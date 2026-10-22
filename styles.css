@@ -174,3 +174,7 @@ ol.steps li{margin-bottom:8px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:999px;font-weight:700;font-size:.9rem;z-index:30;max-width:90vw}
 .fine{font-size:.8rem;color:var(--muted);margin-top:12px;max-width:62ch}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.sync-err{background:var(--chili-soft);border-radius:8px;padding:10px 12px;margin:0 0 14px;font-size:.9rem}
+.sync-err p{margin:4px 0 8px}
+.sync-err code{display:block;white-space:pre-wrap;word-break:break-word;background:var(--surface);font-size:.75rem;padding:6px 8px}
