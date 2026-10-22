@@ -184,6 +184,10 @@ function renderList(){
       <select id="addSec" aria-label="Section">${S.order.map(k => `<option value="${k}">${SECTIONS[k]}</option>`).join("")}</select>
       <button class="btn primary">Add</button>
     </form>
+    ${items.some(i => !i.checked) ? `<div class="toolbar">
+      <button class="btn primary" id="curbside">Order curbside on H-E-B</button>
+      <button class="btn" id="copyList">Copy list</button>
+    </div>` : ""}
     <div class="toolbar">
       <button class="btn" id="tgPantry" aria-pressed="${hidePantry}">${hidePantry ? "Show" : "Hide"} pantry staples</button>
       <button class="btn" id="editOrder">Store order & aisles</button>
@@ -222,6 +226,8 @@ function renderList(){
   };
   $("#tgPantry").onclick = () => { hidePantry = !hidePantry; renderList(); };
   $("#editOrder").onclick = orderSheet;
+  const cb = $("#curbside"); if (cb) cb.onclick = () => curbsideSheet();
+  const cl = $("#copyList"); if (cl) cl.onclick = copyList;
   const cd = $("#clearDone"); if (cd) cd.onclick = () => { bury(S.list.filter(i => i.checked).map(i => i.id)); S.list = S.list.filter(i => !i.checked); save(); renderAll(); };
   const ca = $("#clearAll"); if (ca) ca.onclick = confirmClear;
 }
@@ -366,3 +372,100 @@ if (window.Sync) Sync.init({
   },
   onStatus: setSync
 });
+
+
+/* ---------- Curbside helper ----------
+ * H-E-B has no public API for lists or carts, so this walks you through the
+ * list one item at a time: each item opens a pre-filled search on heb.com
+ * (or the H-E-B app, if your phone hands heb.com links to it). */
+const HEB_QUERY = {
+  "Raw shrimp, peeled (31–40)": "raw peeled deveined shrimp",
+  "Thin-sliced ribeye or sirloin": "thin sliced beef",
+  "Lo mein or spaghetti noodles": "lo mein noodles",
+  "Short-grain or jasmine rice": "jasmine rice",
+  "Thai or sweet basil": "thai basil",
+  "Thai chiles or serranos": "serrano peppers",
+  "Tomato paste (tube or can)": "tomato paste",
+  "Dried red chiles (whole)": "dried chile de arbol",
+  "Vodka (optional)": ""
+};
+function hebQuery(name){
+  if (name in HEB_QUERY) return HEB_QUERY[name];
+  return name.replace(/\(.*?\)/g, "").split(",")[0].replace(/\s+/g, " ").trim().toLowerCase();
+}
+const hebUrl = name => "https://www.heb.com/search?q=" + encodeURIComponent(hebQuery(name));
+function curbItems(){
+  const items = [];
+  for (const sec of S.order)
+    for (const i of S.list.filter(x => x.sec === sec && !(hidePantry && x.pantry)).sort((a,b) => a.name.localeCompare(b.name)))
+      if (hebQuery(i.name)) items.push(i);
+  return items;
+}
+function curbsideSheet(startId){
+  const items = curbItems();
+  let idx = Math.max(0, startId ? items.findIndex(i => i.id === startId) : items.findIndex(i => !i.checked));
+  const draw = () => {
+    const got = items.filter(i => i.checked).length;
+    const it = items[idx];
+    const allDone = items.every(i => i.checked);
+    openSheet(`
+      <div class="sheet-head"><div><span class="label">Curbside · ${got} of ${items.length} added</span><h3>Build your H-E-B cart</h3></div>
+        <button class="x" data-close aria-label="Close">✕</button></div>
+      <div class="curb-dots" aria-hidden="true">${items.map((x,k) => `<i class="${k===idx?"cur":x.checked?"on":""}"></i>`).join("")}</div>
+      ${allDone ? `
+        <div class="curb-card"><div class="nm">Everything's in your cart</div>
+          <div class="sub">Open H-E-B to pick a curbside time and check out.</div></div>
+        <a class="curb-go" href="https://www.heb.com/cart" target="_blank" rel="noopener">Go to my H-E-B cart</a>
+      ` : `
+        <div class="curb-card">
+          <div class="nm">${esc(it.name)}</div>
+          <div class="sub">${it.qty ? "Need " + fmtQty(it.qty) + " " + esc(it.unit || "") + " · " : ""}${esc(SECTIONS[it.sec] || "")}${it.pantry ? " · check pantry first" : ""}</div>
+        </div>
+        <a class="curb-go" href="${hebUrl(it.name)}" target="_blank" rel="noopener" id="goHeb">Search H-E-B for “${esc(hebQuery(it.name))}”</a>
+        <div class="curb-row">
+          <button class="btn primary" id="curbAdded">Added to cart ✓</button>
+          <button class="btn" id="curbSkip">${it.pantry ? "Have it, skip" : "Skip for now"}</button>
+        </div>
+        <div class="row" style="justify-content:space-between;margin-top:10px">
+          <button class="btn ghost" id="curbPrev" ${idx===0?"disabled":""}>← Back</button>
+          <a class="btn ghost" href="https://www.heb.com/cart" target="_blank" rel="noopener" style="text-decoration:none">Open cart</a>
+        </div>`}
+      <details style="margin-top:14px"><summary class="label" style="cursor:pointer">All items</summary>
+        <ul class="curb-list">${items.map((x,k) => `<li class="${x.checked?"got":""}"><span>${esc(x.name)}</span><button class="btn ghost" data-jump="${k}">${x.checked?"Undo":"Go"}</button></li>`).join("")}</ul>
+      </details>
+      <p class="fine">Tip: put the H-E-B app and this app side by side in the app switcher. Search opens in H-E-B, add the item, then swipe back here and tap <em>Added</em>.</p>`);
+    const nextOpen = () => { const n = items.findIndex((x,k) => k > idx && !x.checked); const f = items.findIndex(x => !x.checked); idx = n >= 0 ? n : (f >= 0 ? f : idx); };
+    const add = $("#curbAdded"); if (add) add.onclick = () => { it.checked = true; save(); renderAll(); nextOpen(); draw(); };
+    const sk = $("#curbSkip"); if (sk) sk.onclick = () => {
+      if (it.pantry) { it.checked = true; save(); renderAll(); }
+      // next unchecked item after this one, wrapping around; stay put if it's the only one left
+      for (let step = 1; step <= items.length; step++) { const k = (idx + step) % items.length; if (!items[k].checked) { idx = k; break; } }
+      draw();
+    };
+    const pv = $("#curbPrev"); if (pv) pv.onclick = () => { idx = Math.max(0, idx - 1); draw(); };
+    document.querySelectorAll("[data-jump]").forEach(b => b.onclick = () => {
+      const k = +b.dataset.jump;
+      if (items[k].checked) { items[k].checked = false; save(); renderAll(); }
+      idx = k; draw();
+    });
+  };
+  if (!items.length) { toast("Nothing left to order"); return; }
+  draw();
+}
+async function copyList(){
+  const lines = [];
+  for (const sec of S.order) {
+    const rows = S.list.filter(i => i.sec === sec && !i.checked && !(hidePantry && i.pantry));
+    if (!rows.length) continue;
+    lines.push((AISLE_NO[sec] ? "Aisle " + AISLE_NO[sec] + " – " : "") + SECTIONS[sec]);
+    for (const i of rows.sort((a,b) => a.name.localeCompare(b.name))) lines.push("• " + i.name + (i.qty ? " (" + fmtQty(i.qty) + " " + (i.unit || "") + ")" : ""));
+    lines.push("");
+  }
+  const txt = lines.join("\n").trim();
+  try { await navigator.clipboard.writeText(txt); toast("List copied"); }
+  catch (e) {
+    openSheet(`<div class="sheet-head"><h3>Copy list</h3><button class="x" data-close aria-label="Close">✕</button></div>
+      <textarea class="field bk" id="copyTxt" rows="12" aria-label="Grocery list text">${esc(txt)}</textarea>`);
+    const t = $("#copyTxt"); t.focus(); t.select();
+  }
+}
