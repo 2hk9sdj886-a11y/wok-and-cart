@@ -1,8 +1,7 @@
-/* Paste your Supabase project values here. Both are safe to publish:
- * the publishable/anon key only works together with your login, and
- * row-level security keeps each account's data private. Never put the
- * secret / service_role key in this file. */
+/* Supabase project values. Both are safe to publish: the publishable key
+ * only works together with your login, and row-level security keeps each
+ * account's data private. Never put the secret / service_role key here. */
 window.WOK_CONFIG = {
-  supabaseUrl: "",   // e.g. "https://abcdefghijklm.supabase.co"
-  supabaseKey: ""    // e.g. "sb_publishable_..." (or the legacy "anon public" key)
+  supabaseUrl: "https://znfbbyzsyzjqibyibcio.supabase.co",
+  supabaseKey: "sb_publishable_lqltSo69ILFVt5l92xMUcg_6EzSCr9t"
 };
