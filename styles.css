@@ -197,3 +197,9 @@ ol.steps li{margin-bottom:8px}
 .curb-dots i.on{background:var(--accent)}
 .curb-dots i.cur{background:var(--chili)}
 a.btn{color:var(--ink);text-decoration:none;display:inline-flex;align-items:center}
+
+.srcs{margin:0 0 16px;background:var(--sunk);border-radius:8px;padding:10px 12px}
+.srcs summary{cursor:pointer}
+.srcs .blurb{margin:8px 0;font-size:.88rem;line-height:1.5}
+.srcs ul{margin:6px 0 0;padding-left:18px;font-size:.88rem}
+.srcs a{color:var(--accent);font-weight:700}

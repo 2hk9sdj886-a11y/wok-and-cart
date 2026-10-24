@@ -125,6 +125,10 @@ function recipeSheet(r){
       <ul class="ing">${r.ing.map(([n,q,u,s,p]) => `<li class="${p?"staple":""}"><span>${esc(n)}</span><span>${fmtQty(q*sc)} ${esc(u)}</span></li>`).join("")}</ul>
       <span class="label">Steps</span>
       <ol class="steps">${r.steps.map(s => `<li>${esc(s)}</li>`).join("")}</ol>
+      ${r.sources || r.notes ? `<details class="srcs"><summary class="label">Sources & notes</summary>
+        ${r.notes ? `<p class="blurb">${esc(r.notes)}</p>` : ""}
+        ${r.sources ? `<ul>${r.sources.map(([t,u]) => `<li><a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a></li>`).join("")}</ul>` : ""}
+      </details>` : ""}
       <div class="actions">
         <button class="btn" id="sAdd">Add ${sv} servings to list</button>
         <button class="btn primary" id="sCook">Cooked it</button>
