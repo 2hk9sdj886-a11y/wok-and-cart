@@ -44,7 +44,9 @@ function fmtQty(q){
 function dayTotal(k){ return (S.log[k]||[]).reduce((a,e) => a + Math.round(e.kcal * e.servings), 0); }
 function toast(msg){
   const t = $("#toast"); t.textContent = msg; t.hidden = false;
-  clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 2200);
+  requestAnimationFrame(() => t.classList.add("show"));
+  clearTimeout(toast._t); clearTimeout(toast._h);
+  toast._t = setTimeout(() => { t.classList.remove("show"); toast._h = setTimeout(() => t.hidden = true, 200); }, 2000);
 }
 
 /* ---------- Actions ---------- */
@@ -70,7 +72,7 @@ let mealFilter = "all";
 function renderMeals(){
   const list = RECIPES.filter(r => mealFilter === "all" ? true : mealFilter === "light" ? r.kcal < 520 : mealFilter === "veg" ? r.veg : r.cat === mealFilter)
     .slice().sort((a,b) => mealFilter === "light" ? a.kcal - b.kcal : 0);
-  const heat = h => h ? `<span class="tag heat">${["","Mild heat","Medium heat","Spicy"][h]}</span>` : "";
+  const heat = h => h ? `<span class="${h > 1 ? "hot" : ""}">${["","Mild","Medium heat","Spicy"][h]}</span>` : "";
   $("#v-meals").innerHTML = `
     <h2 class="sec">What's for dinner?</h2>
     <p class="lede">Pick a meal, send its ingredients to your HEB list, and log it when you cook. Calories are per serving.</p>
@@ -82,15 +84,14 @@ function renderMeals(){
         <article class="meal">
           <div class="meal-top">
             <h3>${esc(r.name)}</h3>
-            <div class="kcal"><b>${r.kcal}</b><small>kcal/serving</small></div>
+            <div class="kcal"><b>${fmt(r.kcal)}</b><small>kcal</small></div>
           </div>
           <div class="meta">
-            ${r.veg ? `<span class="tag on">Meatless</span>` : ""}<span class="tag">${r.mins} min</span><span class="tag">Serves ${r.serves}</span>${heat(r.heat)}
-            ${S.onList[r.id] ? `<span class="tag on">On list</span>` : ""}
+<span>${r.mins} min</span><span>Serves ${r.serves}</span>${heat(r.heat)}${r.veg ? `<span class="veg">Meatless</span>` : ""}${S.onList[r.id] ? `<span class="on">On list</span>` : ""}
           </div>
           <p class="blurb">${esc(r.blurb)}</p>
           <div class="actions">
-            <button class="btn" data-open="${r.id}">Recipe</button>
+            <button class="btn ghost" data-open="${r.id}">Recipe →</button>
             <button class="btn" data-add="${r.id}">Add to list</button>
             <button class="btn primary" data-cook="${r.id}">Cooked it</button>
           </div>
@@ -99,13 +100,25 @@ function renderMeals(){
     <p class="fine">Calorie counts are estimates for one serving with ¾ cup cooked rice or 2 oz dry pasta where included. Brands and portions change the real number.</p>`;
 }
 
+let sheetTimer = null;
 function openSheet(html){
   const root = $("#sheetRoot");
+  const live = root.querySelector(".scrim.open:not(.closing) .sheet");
+  if (live) { const y = live.scrollTop; live.innerHTML = html; live.scrollTop = y; return; }   // redraw without re-animating
+  clearTimeout(sheetTimer);
   root.innerHTML = `<div class="scrim" id="scrim"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
-  $("#scrim").addEventListener("click", e => { if (e.target.id === "scrim" || e.target.closest("[data-close]")) closeSheet(); });
-  const f = root.querySelector("button,input"); if (f) f.focus();
+  const scrim = $("#scrim");
+  scrim.addEventListener("click", e => { if (e.target.id === "scrim" || e.target.closest("[data-close]")) closeSheet(); });
+  requestAnimationFrame(() => requestAnimationFrame(() => scrim.classList.add("open")));
+  document.body.style.overflow = "hidden";
+  const f = root.querySelector(".sheet button,.sheet input"); if (f) f.focus({ preventScroll: true });
 }
-function closeSheet(){ $("#sheetRoot").innerHTML = ""; }
+function closeSheet(){
+  const scrim = $("#scrim"); document.body.style.overflow = "";
+  if (!scrim) return;
+  scrim.classList.add("closing"); scrim.classList.remove("open");
+  clearTimeout(sheetTimer); sheetTimer = setTimeout(() => { if (scrim.isConnected) scrim.remove(); }, 200);
+}
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
 
 function recipeSheet(r){
@@ -119,7 +132,7 @@ function recipeSheet(r){
       <div class="split" style="margin:14px 0 4px">
         <div class="row"><span class="label">Servings</span>
           <div class="stepper"><button id="svm" aria-label="Fewer servings">−</button><output>${sv}</output><button id="svp" aria-label="More servings">+</button></div></div>
-        <div class="kcal"><b>${r.kcal}</b><small>kcal per serving</small></div>
+        <div class="kcal"><b>${fmt(r.kcal)}</b><small>kcal per serving</small></div>
       </div>
       <span class="label">Ingredients</span>
       <ul class="ing">${r.ing.map(([n,q,u,s,p]) => `<li class="${p?"staple":""}"><span>${esc(n)}</span><span>${fmtQty(q*sc)} ${esc(u)}</span></li>`).join("")}</ul>
@@ -192,7 +205,7 @@ function renderList(){
       <button class="btn primary" id="curbside">Order curbside on H-E-B</button>
       <button class="btn" id="copyList">Copy list</button>
     </div>` : ""}
-    <div class="toolbar">
+    <div class="toolbar sub">
       <button class="btn" id="tgPantry" aria-pressed="${hidePantry}">${hidePantry ? "Show" : "Hide"} pantry staples</button>
       <button class="btn" id="editOrder">Store order & aisles</button>
       ${done ? `<button class="btn" id="clearDone">Clear checked</button>` : ""}
@@ -304,7 +317,7 @@ function renderLog(){
 
     <span class="label">Logged</span>
     ${entries.length ? `<div class="entries" style="margin-top:6px">${entries.map(e => `
-      <div class="entry"><div class="nm">${esc(e.name)}<small>${e.mealId ? fmtQty(e.servings) + " serving" + (e.servings===1?"":"s") + " · " + e.kcal + " each" : "Quick add"}</small></div>
+      <div class="entry"><div class="nm">${esc(e.name)}<small>${e.mealId ? fmtQty(e.servings) + " serving" + (e.servings===1?"":"s") + " · " + fmt(e.kcal) + " each" : "Quick add"}</small></div>
       <span class="k">${fmt(Math.round(e.kcal*e.servings))}</span>
       <button class="rm btn ghost" data-del="${e.id}" aria-label="Remove ${esc(e.name)}">✕</button></div>`).join("")}</div>`
     : `<div class="empty" style="margin:6px 0 14px"><b>Nothing logged ${isToday?"yet today":"for this day"}</b>Tap <em>Cooked it</em> on a dinner, or quick-add breakfast, lunch and snacks below.</div>`}
@@ -356,7 +369,11 @@ let tab = "meals";
 function showTab(t){
   tab = t;
   document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === t));
-  ["meals","list","log"].forEach(k => $("#v-"+k).hidden = k !== t);
+  ["meals","list","log"].forEach(k => {
+    const v = $("#v-"+k), on = k === t;
+    v.hidden = !on;
+    if (on) { v.classList.remove("view-in"); void v.offsetWidth; v.classList.add("view-in"); }
+  });
   window.scrollTo(0,0);
 }
 document.querySelectorAll("nav.tabs button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
@@ -473,3 +490,7 @@ async function copyList(){
     const t = $("#copyTxt"); t.focus(); t.select();
   }
 }
+
+/* hairline under the header once the page scrolls */
+(() => { const h = document.querySelector("header.top"); let on = false;
+  addEventListener("scroll", () => { const n = scrollY > 4; if (n !== on) { on = n; h.classList.toggle("scrolled", n); } }, { passive: true }); })();

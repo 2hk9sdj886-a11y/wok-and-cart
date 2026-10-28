@@ -1,5 +1,5 @@
 /* Offline support. Bump VERSION whenever app files change so phones pick up the update. */
-const VERSION = "wok-cart-1.4.0";
+const VERSION = "wok-cart-2.0.0";
 const SHELL = [
   "./", "./index.html", "./styles.css", "./config.js", "./recipes.js", "./sync.js", "./app.js", "./account.js",
   "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"
