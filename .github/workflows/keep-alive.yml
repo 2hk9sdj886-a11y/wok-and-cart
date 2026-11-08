@@ -1,0 +1,29 @@
+# Keeps the free Supabase project from auto-pausing after a week without use.
+# Runs one small read against the database every day. The publishable key is
+# the same one the app ships with; row-level security means it sees no data.
+name: Supabase keep-alive
+
+on:
+  schedule:
+    - cron: "17 14 * * *"   # daily, 8:17 AM Central (standard time)
+  workflow_dispatch:         # "Run workflow" button for a manual check
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Query the database
+        env:
+          SUPABASE_URL: https://znfbbyzsyzjqibyibcio.supabase.co
+          SUPABASE_KEY: sb_publishable_lqltSo69ILFVt5l92xMUcg_6EzSCr9t
+        run: |
+          code=$(curl -sS -o body.txt -w "%{http_code}" --retry 3 --retry-delay 20 \
+            "$SUPABASE_URL/rest/v1/planner_state?select=rev&limit=1" \
+            -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY")
+          echo "HTTP $code"; head -c 300 body.txt; echo
+          # 2xx = database answered. Anything else fails the run, so GitHub emails you.
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+            echo "::error::Supabase didn't answer (HTTP $code). The project may be paused: open supabase.com and click Resume project."
+            exit 1
+          fi
