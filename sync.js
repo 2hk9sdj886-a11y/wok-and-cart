@@ -108,6 +108,8 @@
     }
     out.onList = Object.assign({}, remote.onList || {}, local.onList || {});
     out.ratings = Object.assign({}, remote.ratings || {}, local.ratings || {});
+    out.plan = Object.assign({}, remote.plan || {}, local.plan || {});
+    out.planDays = local.planDays || remote.planDays || 7;
     if (!out.list.length) out.onList = {};
     out.gone = pruneGone(gone);
     return out;

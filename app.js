@@ -1,12 +1,16 @@
 /* ---------- State & persistence ---------- */
 const LS_KEY = "wok-cart-v1";
-const blank = () => ({ list:[], log:{}, target:2000, order:DEFAULT_ORDER.slice(), aisles:{}, onList:{}, ratings:{} });
+const blank = () => ({ list:[], log:{}, target:2000, order:DEFAULT_ORDER.slice(), aisles:{}, onList:{}, ratings:{}, plan:{}, planDays:7 });
 let S = blank();
 try { const raw = localStorage.getItem(LS_KEY); if (raw) S = Object.assign(blank(), JSON.parse(raw)); } catch(e) {}
 fixOrder();
 
 function fixOrder(){
   S.gone = S.gone || {};
+  S.plan = S.plan || {}; S.planDays = S.planDays || 7;
+  { const cut = new Date(); cut.setDate(cut.getDate() - 14);
+    const ck = cut.getFullYear() + "-" + String(cut.getMonth()+1).padStart(2,"0") + "-" + String(cut.getDate()).padStart(2,"0");
+    for (const k of Object.keys(S.plan)) if (k < ck || !(S.plan[k] || []).length) delete S.plan[k]; }
   for (const i of S.list) if (!SECTIONS[i.sec]) i.sec = STORE_SEC[i.name] || OLD_SEC[i.sec] || "other";
   for (const k of Object.keys(S.aisles)) if (!SECTIONS[k]) delete S.aisles[k];
   if (!S.storeV) { S.order = DEFAULT_ORDER.slice(); S.storeV = 708; }
@@ -50,7 +54,7 @@ function toast(msg){
 }
 
 /* ---------- Actions ---------- */
-function addRecipeToList(r, servings){
+function addRecipeToList(r, servings, quiet){
   const scale = servings / r.serves;
   for (const [name, qty, unit, sec, pantry] of r.ing) {
     let item = S.list.find(i => i.name === name && i.unit === unit);
@@ -59,36 +63,53 @@ function addRecipeToList(r, servings){
     else S.list.push({ id:uid(), name, qty:add, unit, sec, pantry:!!pantry, checked:false, meals:[r.name] });
   }
   S.onList[r.id] = (S.onList[r.id] || 0) + servings;
+  if (quiet) return;
   save(); renderAll();
   toast(r.ing.length + " ingredients added to your list");
 }
 function logMeal(name, kcal, servings, dateK, mealId){
-  (S.log[dateK] = S.log[dateK] || []).push({ id:uid(), name, kcal, servings, mealId: mealId || null });
+  const id = uid();
+  (S.log[dateK] = S.log[dateK] || []).push({ id, name, kcal, servings, mealId: mealId || null });
   save(); renderAll();
+  return id;
 }
 
 /* ---------- Meals view ---------- */
-let mealFilter = "all";
+/* Filters combine: picking several meal types shows any of them (Pasta + Noodles),
+   and qualities narrow the result (Meatless + Slow cooker = meatless slow-cooker meals). */
+const rt = r => (S.ratings || {})[r.id] || 0;
+const QUALITY = { top: r => rt(r) >= 4, prep: r => !!r.prep, veg: r => !!r.veg, tim: r => r.by === "Tim Laielli", light: r => r.kcal < 520 };
+let mealFilter = new Set();
+function matchRecipes(set, q){
+  const types = [...set].filter(k => !QUALITY[k]), quals = [...set].filter(k => QUALITY[k]);
+  const words = (q || "").toLowerCase().split(/\s+/).filter(Boolean);
+  return RECIPES.filter(r =>
+      (!types.length || types.includes(r.cat)) && quals.every(k => QUALITY[k](r)) &&
+      words.every(w => (r.name + " " + r.blurb + " " + r.ing.map(i => i[0]).join(" ")).toLowerCase().includes(w)))
+    .sort((a,b) => set.has("top") ? rt(b) - rt(a) : set.has("light") ? a.kcal - b.kcal : 0);
+}
+function chipsHTML(set){
+  return `<button class="chip" data-f="all" aria-pressed="${!set.size}">All</button>` +
+    CATS.filter(c => c[0] !== "all").map(([k,l]) => `<button class="chip" data-f="${k}" aria-pressed="${set.has(k)}">${l}</button>`).join("");
+}
+function toggleFilter(set, k){ if (k === "all") set.clear(); else if (set.has(k)) set.delete(k); else set.add(k); }
 function renderMeals(){
-  const rt = r => (S.ratings || {})[r.id] || 0;
-  const pick = {
-    all: () => true, light: r => r.kcal < 520, veg: r => r.veg, prep: r => r.prep, tim: r => r.by === "Tim Laielli", top: r => rt(r) >= 4
-  };
-  const list = RECIPES.filter(pick[mealFilter] || (r => r.cat === mealFilter))
-    .slice().sort((a,b) => mealFilter === "light" ? a.kcal - b.kcal : mealFilter === "top" ? rt(b) - rt(a) : 0);
+  const list = matchRecipes(mealFilter);
   const heat = h => h ? `<span class="${h > 1 ? "hot" : ""}">${["","Mild","Medium heat","Spicy"][h]}</span>` : "";
   $("#v-meals").innerHTML = `
     <h2 class="sec">What's for dinner?</h2>
     <p class="lede">Pick a meal, send its ingredients to your HEB list, and log it when you cook. Calories are per serving.</p>
     <div class="chips" role="group" aria-label="Filter meals">
-      ${CATS.map(([k,l]) => `<button class="chip" data-f="${k}" aria-pressed="${mealFilter===k}">${l}</button>`).join("")}
+      ${chipsHTML(mealFilter)}
     </div>
+    ${mealFilter.size ? `<p class="fine filt-count">${list.length} meal${list.length === 1 ? "" : "s"} · <button class="linkish" data-f="all">Clear filters</button></p>` : ""}
+    ${list.length ? "" : `<div class="empty"><b>No meals match</b>Try removing a filter.</div>`}
     <div class="meals">
       ${list.map(r => `
         <article class="meal">
           <div class="meal-top">
             <h3>${esc(r.name)}</h3>
-            <div class="kcal"><b>${fmt(r.kcal)}</b><small>kcal</small></div>
+            <div class="kcal"><b>${fmt(r.kcal)}</b><small>cal</small></div>
           </div>
           <div class="meta">
 ${rt(r) ? `<span class="stars" aria-label="Rated ${rt(r)} of 5">★ ${rt(r)}</span>` : ""}<span>${r.time || r.mins + " min"}</span><span>Serves ${r.serves}</span>${heat(r.heat)}${r.veg ? `<span class="veg">Meatless</span>` : ""}${r.prep ? `<span>Preps ahead</span>` : ""}${r.by ? `<span>${esc(r.by)}</span>` : ""}${S.onList[r.id] ? `<span class="on">On list</span>` : ""}
@@ -140,7 +161,7 @@ function recipeSheet(r){
       <div class="split" style="margin:14px 0 4px">
         <div class="row"><span class="label">Servings</span>
           <div class="stepper"><button id="svm" aria-label="Fewer servings">−</button><output>${sv}</output><button id="svp" aria-label="More servings">+</button></div></div>
-        <div class="kcal"><b>${fmt(r.kcal)}</b><small>kcal per serving</small></div>
+        <div class="kcal"><b>${fmt(r.kcal)}</b><small>calories per serving</small></div>
       </div>
       ${r.prep ? `<div class="prep"><span class="label">Make ahead</span><p>${esc(r.prep)}</p></div>` : ""}
       <span class="label">Ingredients</span>
@@ -152,6 +173,7 @@ function recipeSheet(r){
         ${r.sources ? `<ul>${r.sources.map(([t,u]) => `<li><a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a></li>`).join("")}</ul>` : ""}
       </details>` : ""}
       <div class="actions">
+        <button class="btn" id="sPlan">Add to plan</button>
         <button class="btn" id="sAdd">Add ${sv} servings to list</button>
         <button class="btn primary" id="sCook">Cooked it</button>
       </div>`);
@@ -162,6 +184,7 @@ function recipeSheet(r){
     });
     $("#svm").onclick = () => { if (sv > 1) { sv--; draw(); } };
     $("#svp").onclick = () => { if (sv < 12) { sv++; draw(); } };
+    $("#sPlan").onclick = () => planPickDay(r);
     $("#sAdd").onclick = () => { addRecipeToList(r, sv); closeSheet(); };
     $("#sCook").onclick = () => cookSheet(r);
   };
@@ -177,17 +200,17 @@ function cookSheet(r){
       <p class="blurb">How much did you eat?</p>
       <div class="split" style="margin:14px 0">
         <div class="stepper"><button id="cm" aria-label="Less">−</button><output>${fmtQty(sv)}</output><button id="cp" aria-label="More">+</button></div>
-        <div class="kcal"><b>${fmt(Math.round(r.kcal*sv))}</b><small>kcal</small></div>
+        <div class="kcal"><b>${fmt(Math.round(r.kcal*sv))}</b><small>calories</small></div>
       </div>
       <label class="label" for="cDate">Date</label>
       <div class="row" style="margin:6px 0 16px"><input class="field" type="date" id="cDate" value="${todayKey()}" max="${todayKey()}"></div>
-      <div class="actions"><button class="btn primary" id="cGo">Log ${fmt(Math.round(r.kcal*sv))} kcal</button><button class="btn ghost" data-close>Cancel</button></div>`);
+      <div class="actions"><button class="btn primary" id="cGo">Log ${fmt(Math.round(r.kcal*sv))} calories</button><button class="btn ghost" data-close>Cancel</button></div>`);
     $("#cm").onclick = () => { if (sv > 0.5) { sv -= 0.5; draw(); } };
     $("#cp").onclick = () => { if (sv < 4) { sv += 0.5; draw(); } };
     $("#cGo").onclick = () => {
       const d = $("#cDate").value || todayKey();
       logMeal(r.name, r.kcal, sv, d, r.id); closeSheet();
-      toast("Logged " + fmt(Math.round(r.kcal*sv)) + " kcal" + (d === todayKey() ? " for today" : " for " + parseKey(d).toLocaleDateString("en-US",{month:"short",day:"numeric"})));
+      toast("Logged " + fmt(Math.round(r.kcal*sv)) + " calories" + (d === todayKey() ? " for today" : " for " + parseKey(d).toLocaleDateString("en-US",{month:"short",day:"numeric"})));
     };
   };
   draw();
@@ -195,7 +218,7 @@ function cookSheet(r){
 
 $("#v-meals").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
-  if (b.dataset.f) { mealFilter = b.dataset.f; renderMeals(); }
+  if (b.dataset.f) { toggleFilter(mealFilter, b.dataset.f); const x = scrollX, y = $(".chips") ? $(".chips").scrollLeft : 0; renderMeals(); if ($(".chips")) $(".chips").scrollLeft = y; }
   else if (b.dataset.open) recipeSheet(recipeById(b.dataset.open));
   else if (b.dataset.add) { const r = recipeById(b.dataset.add); addRecipeToList(r, r.serves); }
   else if (b.dataset.cook) cookSheet(recipeById(b.dataset.cook));
@@ -323,7 +346,7 @@ function renderLog(){
       <button class="btn" id="nextDay" aria-label="Next day" ${isToday?"disabled":""}>→</button>
     </div>
     <div class="gauge">
-      <div class="split"><div class="big">${fmt(total)} <small>/ ${fmt(tgt)} kcal</small></div>
+      <div class="split"><div class="big">${fmt(total)} <small>/ ${fmt(tgt)} calories</small></div>
         <span class="label" style="color:${over?"var(--chili)":"var(--accent)"}">${over ? fmt(-left) + " over" : fmt(left) + " left"}</span></div>
       <div class="bar ${over?"over":""}"><i style="width:${Math.min(100,total/tgt*100)}%"></i></div>
       <div class="note">${entries.length} item${entries.length===1?"":"s"} logged${isToday ? "" : " on this day"}</div>
@@ -339,18 +362,18 @@ function renderLog(){
     <span class="label">Add to ${isToday ? "today" : "this day"}</span>
     <form class="quick" id="quick" style="margin-top:6px">
       <input id="qName" placeholder="Breakfast, lunch, snack…" aria-label="What you ate" autocomplete="off">
-      <input id="qKcal" type="number" inputmode="numeric" min="0" max="5000" placeholder="kcal" aria-label="Calories">
+      <input id="qKcal" type="number" inputmode="numeric" min="0" max="5000" placeholder="Calories" aria-label="Calories">
       <button class="btn primary">Add</button>
     </form>
     <form class="quick" id="quickMeal">
-      <select id="qMeal" aria-label="Dinner from the app">${RECIPES.map(r => `<option value="${r.id}">${esc(r.name)} · ${r.kcal}</option>`).join("")}</select>
+      <select id="qMeal" aria-label="Dinner from the app">${RECIPES.map(r => `<option value="${r.id}">${esc(r.name)} · ${fmt(r.kcal)} cal</option>`).join("")}</select>
       <select id="qSv" aria-label="Servings"><option value="0.5">½ ×</option><option value="1" selected>1 ×</option><option value="1.5">1½ ×</option><option value="2">2 ×</option></select>
       <button class="btn">Log dinner</button>
     </form>
 
     <span class="label" style="display:block;margin-top:14px">Last 7 days</span>
     <div class="week" style="margin-top:6px">
-            ${days.map(k => { const v = dayTotal(k); return `<button class="col ${v>tgt?"over":""} ${k===logDay?"sel":""}" data-day="${k}" aria-label="${k}: ${v} kcal">
+            ${days.map(k => { const v = dayTotal(k); return `<button class="col ${v>tgt?"over":""} ${k===logDay?"sel":""}" data-day="${k}" aria-label="${k}: ${v} calories">
         <i style="height:${Math.max(1, v/maxV*100)}%"></i><span>${parseKey(k).toLocaleDateString("en-US",{weekday:"narrow"})}</span></button>`; }).join("")}
     </div>
 
@@ -378,12 +401,138 @@ $("#v-log").addEventListener("click", e => {
   if (day && day.dataset.day <= todayKey()) { logDay = day.dataset.day; renderLog(); }
 });
 
+/* ---------- Meal planner ---------- */
+const SLOTS = [["breakfast","Breakfast"],["lunch","Lunch"],["dinner","Dinner"],["snack","Snacks"]];
+const SLOT_DEFAULT = { breakfast: ["breakfast"], lunch: ["prep"], dinner: [], snack: [] };
+function planDates(){ const out = [], d = new Date(); for (let i = 0; i < (S.planDays || 7); i++) { out.push(dkey(d)); d.setDate(d.getDate() + 1); } return out; }
+const dayName = k => k === todayKey() ? "Today" : parseKey(k).toLocaleDateString("en-US", { weekday:"short", month:"short", day:"numeric" });
+const entryCal = e => { const r = recipeById(e.rid); return r ? Math.round(r.kcal * (e.sv || 1)) : 0; };
+const planDayCal = k => (S.plan[k] || []).reduce((a, e) => a + entryCal(e), 0);
+
+function renderPlan(){
+  const dates = planDates(), tgt = S.target || 2000;
+  const total = dates.reduce((a, k) => a + planDayCal(k), 0);
+  const planned = dates.filter(k => (S.plan[k] || []).length).length;
+  const meals = dates.reduce((a, k) => a + (S.plan[k] || []).length, 0);
+  $("#v-plan").innerHTML = `
+    <div class="split"><h2 class="sec">Meal plan</h2></div>
+    <p class="lede">Pick how far ahead to plan, then add meals to each day. Calories add up as you go.</p>
+    <div class="seg" role="group" aria-label="Days to plan">
+      ${[3,5,7,10,14].map(n => `<button data-days="${n}" aria-pressed="${S.planDays === n}">${n} days</button>`).join("")}
+    </div>
+    <div class="plan-sum">
+      <div><span class="label">Planned</span><b>${fmt(total)}</b><small>calories</small></div>
+      <div><span class="label">Per day</span><b>${planned ? fmt(Math.round(total / planned)) : "–"}</b><small>avg of ${planned} day${planned === 1 ? "" : "s"}</small></div>
+      <div><span class="label">Meals</span><b>${meals}</b><small>across ${dates.length} days</small></div>
+    </div>
+    ${meals ? `<div class="toolbar"><button class="btn primary" id="planToList">Add plan to grocery list</button><button class="btn ghost warn" id="planClear">Clear plan</button></div>` : ""}
+    <div class="days">
+      ${dates.map(k => {
+        const cal = planDayCal(k), over = cal > tgt, list = S.plan[k] || [];
+        return `<section class="day ${k === todayKey() ? "is-today" : ""}">
+          <header class="day-head"><h3>${dayName(k)}</h3>
+            <span class="day-cal ${over ? "over" : ""}">${cal ? fmt(cal) + " / " + fmt(tgt) + " cal" : "Nothing planned"}</span></header>
+          ${cal ? `<div class="bar thin ${over ? "over" : ""}"><i style="width:${Math.min(100, cal / tgt * 100)}%"></i></div>` : ""}
+          ${SLOTS.map(([slot, label]) => {
+            const items = list.filter(e => e.slot === slot);
+            if (slot === "snack" && !items.length) return "";
+            return `<div class="slot"><span class="slot-name">${label}</span>
+              <div class="slot-items">
+                ${items.map(e => { const r = recipeById(e.rid); if (!r) return "";
+                  return `<div class="pmeal ${e.done ? "done" : ""}">
+                    ${k <= todayKey() ? `<button class="pcheck" data-pdone="${k}|${e.id}" aria-pressed="${!!e.done}" aria-label="${e.done ? "Undo log" : "Ate it: log calories"}"></button>` : ""}
+                    <button class="pname" data-popen="${r.id}">${esc(r.name)}</button>
+                    <button class="psv" data-psv="${k}|${e.id}" aria-label="Servings">${fmtQty(e.sv || 1)}×</button>
+                    <span class="pcal">${fmt(entryCal(e))}</span>
+                    <button class="rm" data-prm="${k}|${e.id}" aria-label="Remove ${esc(r.name)}">✕</button></div>`; }).join("")}
+                <button class="padd" data-padd="${k}|${slot}">+ Add</button>
+              </div></div>`; }).join("")}
+          ${list.some(e => e.slot === "snack") ? "" : `<button class="padd snack" data-padd="${k}|snack">+ Snack</button>`}
+        </section>`; }).join("")}
+    </div>
+    <p class="fine">Tap the circle next to a meal on today or an earlier day to log it in your calorie log. Tap the serving count to change how much you'll eat. "Add plan to grocery list" buys enough full batches to cover every planned serving, so a meal-prep recipe that makes 8 covers 8 meals.</p>`;
+}
+
+function addToPlan(k, slot, rid, sv){
+  (S.plan[k] = S.plan[k] || []).push({ id: uid(), rid, slot, sv: sv || 1 });
+  save(); renderPlan(); renderHeader();
+}
+function planPicker(k, slot){
+  const set = new Set(SLOT_DEFAULT[slot] || []); let q = "";
+  const label = SLOTS.find(s => s[0] === slot)[1];
+  const drawList = () => {
+    const list = matchRecipes(set, q);
+    $("#pkList").innerHTML = list.length ? list.map(r => `<button class="pk" data-pick="${r.id}">
+        <span class="pk-nm">${esc(r.name)}<small>${CATS.find(c => c[0] === r.cat)[1]}${r.prep ? " · Preps ahead" : ""}${rt(r) ? " · ★ " + rt(r) : ""}</small></span>
+        <span class="pk-cal">${fmt(r.kcal)}<small> cal</small></span></button>`).join("")
+      : `<div class="empty"><b>No meals match</b>Try removing a filter.</div>`;
+    $("#pkChips").innerHTML = chipsHTML(set);
+  };
+  openSheet(`
+    <div class="sheet-head"><div><span class="label">${dayName(k)}</span><h3>Add ${label.toLowerCase()}</h3></div>
+      <button class="x" data-close aria-label="Close">✕</button></div>
+    <input class="field pk-search" id="pkQ" type="search" placeholder="Search meals or ingredients" aria-label="Search meals" autocomplete="off">
+    <div class="chips" id="pkChips" role="group" aria-label="Filter meals"></div>
+    <div id="pkList" class="pk-list"></div>`);
+  drawList();
+  $("#pkQ").oninput = e => { q = e.target.value; drawList(); };
+  $("#pkChips").onclick = e => { const b = e.target.closest("[data-f]"); if (!b) return; const x = e.currentTarget.scrollLeft; toggleFilter(set, b.dataset.f); drawList(); $("#pkChips").scrollLeft = x; };
+  $("#pkList").onclick = e => { const b = e.target.closest("[data-pick]"); if (!b) return;
+    const r = recipeById(b.dataset.pick); addToPlan(k, slot, r.id, 1); closeSheet(); toast(r.name + " added to " + dayName(k)); };
+}
+function planPickDay(r){
+  const dates = planDates();
+  const guess = r.cat === "breakfast" ? "breakfast" : "dinner";
+  openSheet(`
+    <div class="sheet-head"><div><span class="label">Add to plan</span><h3>${esc(r.name)}</h3></div>
+      <button class="x" data-close aria-label="Close">✕</button></div>
+    <label class="label" for="ppDay">Day</label>
+    <select class="field" id="ppDay" style="width:100%;margin:6px 0 12px">${dates.map(k => `<option value="${k}">${dayName(k)}</option>`).join("")}</select>
+    <label class="label" for="ppSlot">Meal</label>
+    <select class="field" id="ppSlot" style="width:100%;margin:6px 0 16px">${SLOTS.map(([s, l]) => `<option value="${s}" ${s === guess ? "selected" : ""}>${l}</option>`).join("")}</select>
+    <div class="actions"><button class="btn primary" id="ppGo">Add to plan</button><button class="btn ghost" data-close>Cancel</button></div>`);
+  $("#ppGo").onclick = () => { const k = $("#ppDay").value; addToPlan(k, $("#ppSlot").value, r.id, 1); closeSheet(); toast(r.name + " added to " + dayName(k)); };
+}
+function findEntry(ref){ const [k, id] = ref.split("|"); return { k, e: (S.plan[k] || []).find(x => x.id === id) }; }
+
+$("#v-plan").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.days) { S.planDays = +b.dataset.days; save(); renderPlan(); return; }
+  if (b.dataset.padd) { const [k, slot] = b.dataset.padd.split("|"); planPicker(k, slot); return; }
+  if (b.dataset.popen) { recipeSheet(recipeById(b.dataset.popen)); return; }
+  if (b.dataset.prm) { const { k, e: en } = findEntry(b.dataset.prm); if (!en) return;
+    if (en.logId) { S.log[k] = (S.log[k] || []).filter(x => x.id !== en.logId); bury([en.logId]); }
+    S.plan[k] = S.plan[k].filter(x => x !== en); save(); renderAll(); return; }
+  if (b.dataset.psv) { const { e: en } = findEntry(b.dataset.psv); if (!en) return;
+    const steps = [0.5, 1, 1.5, 2]; en.sv = steps[(steps.indexOf(en.sv || 1) + 1) % steps.length];
+    if (en.logId) { const k = b.dataset.psv.split("|")[0]; const le = (S.log[k] || []).find(x => x.id === en.logId); if (le) le.servings = en.sv; }
+    save(); renderAll(); return; }
+  if (b.dataset.pdone) { const { k, e: en } = findEntry(b.dataset.pdone); if (!en) return; const r = recipeById(en.rid);
+    if (en.done) { S.log[k] = (S.log[k] || []).filter(x => x.id !== en.logId); bury([en.logId]); en.done = false; delete en.logId; save(); renderAll(); toast("Removed from your log"); }
+    else { en.done = true; en.logId = logMeal(r.name, r.kcal, en.sv || 1, k, r.id); toast("Logged " + fmt(entryCal(en)) + " calories"); }
+    return; }
+  if (b.id === "planToList") {
+    const need = {};
+    for (const k of planDates()) for (const en of S.plan[k] || []) need[en.rid] = (need[en.rid] || 0) + (en.sv || 1);
+    let n = 0;
+    for (const [rid, sv] of Object.entries(need)) { const r = recipeById(rid); if (!r) continue;
+      addRecipeToList(r, Math.ceil(sv / r.serves) * r.serves, true); n++; }
+    save(); renderAll(); toast(n + " recipe" + (n === 1 ? "" : "s") + " added to your grocery list"); return; }
+  if (b.id === "planClear") {
+    openSheet(`<div class="sheet-head"><h3>Clear the plan?</h3><button class="x" data-close aria-label="Close">✕</button></div>
+      <p class="blurb">Removes every planned meal for the next ${S.planDays} days. Your calorie log and grocery list stay as they are.</p>
+      <div class="actions" style="margin-top:16px"><button class="btn warn" id="yesPlanClear">Clear plan</button><button class="btn ghost" data-close>Keep it</button></div>`);
+    $("#yesPlanClear").onclick = () => { for (const k of planDates()) delete S.plan[k]; save(); renderAll(); closeSheet(); toast("Plan cleared"); };
+  }
+});
+
+
 /* ---------- Shell ---------- */
 let tab = "meals";
 function showTab(t){
   tab = t;
   document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === t));
-  ["meals","list","log"].forEach(k => {
+  ["meals","plan","list","log"].forEach(k => {
     const v = $("#v-"+k), on = k === t;
     v.hidden = !on;
     if (on) { v.classList.remove("view-in"); void v.offsetWidth; v.classList.add("view-in"); }
@@ -392,13 +541,13 @@ function showTab(t){
 }
 document.querySelectorAll("nav.tabs button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
 function renderHeader(){
-  $("#todayPill").innerHTML = `Today <b>${fmt(dayTotal(todayKey()))}</b> / ${fmt(S.target||2000)} kcal`;
+  $("#todayPill").innerHTML = `Today <b>${fmt(dayTotal(todayKey()))}</b> / ${fmt(S.target||2000)} cal`;
   const left = S.list.filter(i => !i.checked).length;
   const bdg = $("#listBadge"); bdg.hidden = !left; bdg.textContent = left;
 }
-function renderAll(){ renderHeader(); renderMeals(); renderList(); renderLog(); }
+function renderAll(){ renderHeader(); renderMeals(); renderPlan(); renderList(); renderLog(); }
 renderAll();
-{ const h = location.hash.slice(1); if (["meals","list","log"].includes(h)) showTab(h); }
+{ const h = location.hash.slice(1); if (["meals","plan","list","log"].includes(h)) showTab(h); }
 if (window.Sync) Sync.init({
   getState: () => JSON.parse(JSON.stringify(S)),
   setState: (data, fromOther) => {
@@ -508,3 +657,4 @@ async function copyList(){
 /* hairline under the header once the page scrolls */
 (() => { const h = document.querySelector("header.top"); let on = false;
   addEventListener("scroll", () => { const n = scrollY > 4; if (n !== on) { on = n; h.classList.toggle("scrolled", n); } }, { passive: true }); })();
+
