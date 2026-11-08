@@ -53,7 +53,7 @@ em{font-style:normal;font-weight:600;color:var(--ink)}
 /* ---------- header ---------- */
 /* Header scrolls with the page on a solid background: no frosted glass, nothing floats over it. */
 header.top{position:relative;z-index:1;background:var(--bg);
-  margin:0 calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding:calc(env(safe-area-inset-top,0px) + 16px) max(16px,env(safe-area-inset-left,0px)) 10px;margin-bottom:18px}
+  margin:0 calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding:calc(env(safe-area-inset-top,0px) + 24px) max(16px,env(safe-area-inset-left,0px)) 10px;margin-bottom:18px}
 .brand{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .brand h1{display:flex;align-items:center;gap:9px;font-weight:700;font-size:1.06rem;letter-spacing:-.02em;margin:0;line-height:1}
 .brand h1 span{color:inherit}
