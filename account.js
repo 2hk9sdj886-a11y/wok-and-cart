@@ -1,6 +1,6 @@
 /* Account & sync sheet, backups, install prompt, service worker. */
 (function () {
-  const APP_VERSION = "2.2.0";
+  const APP_VERSION = "2.2.1";
 
   function accountSheet() {
     const signedIn = !!Sync.email;

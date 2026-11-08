@@ -38,7 +38,7 @@ html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;
   -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;-webkit-tap-highlight-color:transparent;letter-spacing:-.006em}
 /* status-bar band: only visible if the header ever isn't covering it */
-body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:4;background:var(--bg)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
 [hidden]{display:none!important}
 img{max-width:100%}
 code{font-family:var(--mono);font-size:.86em;background:var(--surface);padding:1px 5px;border-radius:5px}
@@ -51,11 +51,9 @@ em{font-style:normal;font-weight:600;color:var(--ink)}
   padding-top:0;padding-bottom:calc(104px + env(safe-area-inset-bottom,0px))}
 
 /* ---------- header ---------- */
-header.top{position:sticky;top:0;z-index:5;background:var(--glass);
-  -webkit-backdrop-filter:saturate(1.6) blur(16px);backdrop-filter:saturate(1.6) blur(16px);
-  margin:0 calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding:calc(env(safe-area-inset-top,0px) + 14px) max(16px,env(safe-area-inset-left,0px)) 10px;margin-bottom:18px;
-  border-bottom:1px solid transparent;transition:border-color var(--mid)}
-header.top.scrolled{border-bottom-color:var(--line)}
+/* Header scrolls with the page on a solid background: no frosted glass, nothing floats over it. */
+header.top{position:relative;z-index:1;background:var(--bg);
+  margin:0 calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding:calc(env(safe-area-inset-top,0px) + 16px) max(16px,env(safe-area-inset-left,0px)) 10px;margin-bottom:18px}
 .brand{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .brand h1{display:flex;align-items:center;gap:9px;font-weight:700;font-size:1.06rem;letter-spacing:-.02em;margin:0;line-height:1}
 .brand h1 span{color:inherit}

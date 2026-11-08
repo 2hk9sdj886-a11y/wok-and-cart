@@ -59,8 +59,8 @@ out = f'''<title>Wok &amp; Cart</title>
 {css}
 /* artifact frame already pads the top safe area: header sticks below it, band paints it */
 .wrap{{padding-top:0}}
-header.top{{top:env(safe-area-inset-top,0px);padding-top:14px}}
-body::before{{z-index:10;background:var(--glass);-webkit-backdrop-filter:saturate(1.6) blur(16px);backdrop-filter:saturate(1.6) blur(16px)}}
+header.top{{padding-top:16px}}
+body::before{{z-index:10;background:var(--bg)}}
 </style>
 {body}
 <script>
