@@ -315,7 +315,7 @@ const RECIPES = [
   steps:["Heat the olive oil in a large skillet over medium. Cook the sliced onion and peppers 8 to 10 minutes until soft and sweet.","Add 4 sliced garlic cloves, 1 tsp cumin, 1 tsp smoked paprika and 2 tbsp harissa; stir 1 minute.","Add the crushed tomatoes and 1/2 tsp salt; simmer 10 minutes until thick.","Make 8 wells with a spoon and crack an egg into each. Cover and cook on low 6 to 8 minutes, until the whites are set and the yolks still runny.","Scatter feta and cilantro over the top and serve with warm pita."],
   notes:"Original Wok & Cart recipe. Calories are estimated from typical label values for 2 eggs and sauce: eggs 145, sauce and oil 110, feta 50. Half a pita adds about 85 (included)."},
 ];
-const CATS = [["all","All"],["top","Top rated"],["prep","Meal prep"],["slow","Slow cooker"],["breakfast","Breakfast"],["veg","Meatless"],["stir","Stir fry"],["bowl","Rice bowls"],["pasta","Pasta"],["noodle","Noodles"],["ramen","Ramen"],["tim","Tim Laielli"],["light","Under 520 kcal"]];
+const CATS = [["all","All"],["top","Top rated"],["prep","Meal prep"],["slow","Slow cooker"],["breakfast","Breakfast"],["veg","Meatless"],["stir","Stir fry"],["bowl","Rice bowls"],["pasta","Pasta"],["noodle","Noodles"],["ramen","Ramen"],["tim","Tim Laielli"],["light","Under 520 cal"]];
 const GEN = {intl:"a1",pasta:"a2",canned:"a3",grains:"a2",spices:"a3",oils:"a3",snacks:"a5",seafood:"meat",bakery:"a1"};
 RECIPES.forEach(r => r.ing.forEach(i => { i[3] = STORE_SEC[i[0]] || GEN[i[3]] || i[3]; }));
 const recipeById = id => RECIPES.find(r => r.id === id);

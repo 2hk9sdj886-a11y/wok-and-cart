@@ -88,10 +88,29 @@ function matchRecipes(set, q){
       words.every(w => (r.name + " " + r.blurb + " " + r.ing.map(i => i[0]).join(" ")).toLowerCase().includes(w)))
     .sort((a,b) => set.has("top") ? rt(b) - rt(a) : set.has("light") ? a.kcal - b.kcal : 0);
 }
-function chipsHTML(set){
-  return `<button class="chip" data-f="all" aria-pressed="${!set.size}">All</button>` +
-    CATS.filter(c => c[0] !== "all").map(([k,l]) => `<button class="chip" data-f="${k}" aria-pressed="${set.has(k)}">${l}</button>`).join("");
+/* Filter drop-down: a "Filter" button opens a panel of grouped options (no sideways scrolling).
+   Chosen filters show as removable tags under the button. */
+const catLabel = k => (CATS.find(c => c[0] === k) || [k, k])[1];
+function filterHTML(set, open, count){
+  const types = CATS.filter(c => c[0] !== "all" && !QUALITY[c[0]]), quals = CATS.filter(c => QUALITY[c[0]]);
+  const opt = ([k, l]) => `<button class="fopt" data-f="${k}" aria-pressed="${set.has(k)}">${l}</button>`;
+  return `<div class="fbar">
+      <button class="fbtn ${set.size ? "on" : ""}" data-ftoggle aria-expanded="${open}">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M6 10h8M8.5 15h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        Filter${set.size ? ` <b>${set.size}</b>` : ""}<span class="caret" aria-hidden="true"></span></button>
+      ${[...set].map(k => `<button class="ftag" data-f="${k}" aria-label="Remove ${catLabel(k)} filter">${catLabel(k)}<span aria-hidden="true">✕</span></button>`).join("")}
+      ${set.size ? `<button class="linkish" data-f="all">Clear</button>` : ""}
+    </div>
+    <div class="fpanel" ${open ? "" : "hidden"}>
+      <span class="label">Meal type <small>shows any you pick</small></span>
+      <div class="fopts">${types.map(opt).join("")}</div>
+      <span class="label">Narrow by <small>must match all</small></span>
+      <div class="fopts">${quals.map(opt).join("")}</div>
+      <div class="fpanel-foot"><button class="btn ghost" data-f="all" ${set.size ? "" : "disabled"}>Clear all</button>
+        <button class="btn primary" data-ftoggle>Show ${count} meal${count === 1 ? "" : "s"}</button></div>
+    </div>`;
 }
+let mealFilterOpen = false;
 function toggleFilter(set, k){ if (k === "all") set.clear(); else if (set.has(k)) set.delete(k); else set.add(k); }
 function renderMeals(){
   const list = matchRecipes(mealFilter);
@@ -99,10 +118,8 @@ function renderMeals(){
   $("#v-meals").innerHTML = `
     <h2 class="sec">What's for dinner?</h2>
     <p class="lede">Pick a meal, send its ingredients to your HEB list, and log it when you cook. Calories are per serving.</p>
-    <div class="chips" role="group" aria-label="Filter meals">
-      ${chipsHTML(mealFilter)}
-    </div>
-    ${mealFilter.size ? `<p class="fine filt-count">${list.length} meal${list.length === 1 ? "" : "s"} · <button class="linkish" data-f="all">Clear filters</button></p>` : ""}
+    <div class="filters" role="group" aria-label="Filter meals">${filterHTML(mealFilter, mealFilterOpen, list.length)}</div>
+    ${mealFilter.size && !mealFilterOpen ? `<p class="fine filt-count">${list.length} meal${list.length === 1 ? "" : "s"}</p>` : ""}
     ${list.length ? "" : `<div class="empty"><b>No meals match</b>Try removing a filter.</div>`}
     <div class="meals">
       ${list.map(r => `
@@ -218,7 +235,8 @@ function cookSheet(r){
 
 $("#v-meals").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
-  if (b.dataset.f) { toggleFilter(mealFilter, b.dataset.f); const x = scrollX, y = $(".chips") ? $(".chips").scrollLeft : 0; renderMeals(); if ($(".chips")) $(".chips").scrollLeft = y; }
+  if (b.hasAttribute("data-ftoggle")) { mealFilterOpen = !mealFilterOpen; renderMeals(); }
+  else if (b.dataset.f) { toggleFilter(mealFilter, b.dataset.f); renderMeals(); }
   else if (b.dataset.open) recipeSheet(recipeById(b.dataset.open));
   else if (b.dataset.add) { const r = recipeById(b.dataset.add); addRecipeToList(r, r.serves); }
   else if (b.dataset.cook) cookSheet(recipeById(b.dataset.cook));
@@ -458,7 +476,7 @@ function addToPlan(k, slot, rid, sv){
   save(); renderPlan(); renderHeader();
 }
 function planPicker(k, slot){
-  const set = new Set(SLOT_DEFAULT[slot] || []); let q = "";
+  const set = new Set(SLOT_DEFAULT[slot] || []); let q = "", open = false;
   const label = SLOTS.find(s => s[0] === slot)[1];
   const drawList = () => {
     const list = matchRecipes(set, q);
@@ -466,17 +484,19 @@ function planPicker(k, slot){
         <span class="pk-nm">${esc(r.name)}<small>${CATS.find(c => c[0] === r.cat)[1]}${r.prep ? " · Preps ahead" : ""}${rt(r) ? " · ★ " + rt(r) : ""}</small></span>
         <span class="pk-cal">${fmt(r.kcal)}<small> cal</small></span></button>`).join("")
       : `<div class="empty"><b>No meals match</b>Try removing a filter.</div>`;
-    $("#pkChips").innerHTML = chipsHTML(set);
+    $("#pkChips").innerHTML = filterHTML(set, open, list.length);
   };
   openSheet(`
     <div class="sheet-head"><div><span class="label">${dayName(k)}</span><h3>Add ${label.toLowerCase()}</h3></div>
       <button class="x" data-close aria-label="Close">✕</button></div>
     <input class="field pk-search" id="pkQ" type="search" placeholder="Search meals or ingredients" aria-label="Search meals" autocomplete="off">
-    <div class="chips" id="pkChips" role="group" aria-label="Filter meals"></div>
+    <div class="filters" id="pkChips" role="group" aria-label="Filter meals"></div>
     <div id="pkList" class="pk-list"></div>`);
   drawList();
   $("#pkQ").oninput = e => { q = e.target.value; drawList(); };
-  $("#pkChips").onclick = e => { const b = e.target.closest("[data-f]"); if (!b) return; const x = e.currentTarget.scrollLeft; toggleFilter(set, b.dataset.f); drawList(); $("#pkChips").scrollLeft = x; };
+  $("#pkChips").onclick = e => { const b = e.target.closest("button"); if (!b) return;
+    if (b.hasAttribute("data-ftoggle")) open = !open; else if (b.dataset.f) toggleFilter(set, b.dataset.f); else return;
+    drawList(); };
   $("#pkList").onclick = e => { const b = e.target.closest("[data-pick]"); if (!b) return;
     const r = recipeById(b.dataset.pick); addToPlan(k, slot, r.id, 1); closeSheet(); toast(r.name + " added to " + dayName(k)); };
 }
