@@ -107,6 +107,7 @@
       if (arr.length) out.log[d] = arr;
     }
     out.onList = Object.assign({}, remote.onList || {}, local.onList || {});
+    out.ratings = Object.assign({}, remote.ratings || {}, local.ratings || {});
     if (!out.list.length) out.onList = {};
     out.gone = pruneGone(gone);
     return out;

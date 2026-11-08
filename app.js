@@ -1,6 +1,6 @@
 /* ---------- State & persistence ---------- */
 const LS_KEY = "wok-cart-v1";
-const blank = () => ({ list:[], log:{}, target:2000, order:DEFAULT_ORDER.slice(), aisles:{}, onList:{} });
+const blank = () => ({ list:[], log:{}, target:2000, order:DEFAULT_ORDER.slice(), aisles:{}, onList:{}, ratings:{} });
 let S = blank();
 try { const raw = localStorage.getItem(LS_KEY); if (raw) S = Object.assign(blank(), JSON.parse(raw)); } catch(e) {}
 fixOrder();
@@ -70,8 +70,12 @@ function logMeal(name, kcal, servings, dateK, mealId){
 /* ---------- Meals view ---------- */
 let mealFilter = "all";
 function renderMeals(){
-  const list = RECIPES.filter(r => mealFilter === "all" ? true : mealFilter === "light" ? r.kcal < 520 : mealFilter === "veg" ? r.veg : r.cat === mealFilter)
-    .slice().sort((a,b) => mealFilter === "light" ? a.kcal - b.kcal : 0);
+  const rt = r => (S.ratings || {})[r.id] || 0;
+  const pick = {
+    all: () => true, light: r => r.kcal < 520, veg: r => r.veg, prep: r => r.prep, tim: r => r.by === "Tim Laielli", top: r => rt(r) >= 4
+  };
+  const list = RECIPES.filter(pick[mealFilter] || (r => r.cat === mealFilter))
+    .slice().sort((a,b) => mealFilter === "light" ? a.kcal - b.kcal : mealFilter === "top" ? rt(b) - rt(a) : 0);
   const heat = h => h ? `<span class="${h > 1 ? "hot" : ""}">${["","Mild","Medium heat","Spicy"][h]}</span>` : "";
   $("#v-meals").innerHTML = `
     <h2 class="sec">What's for dinner?</h2>
@@ -87,7 +91,7 @@ function renderMeals(){
             <div class="kcal"><b>${fmt(r.kcal)}</b><small>kcal</small></div>
           </div>
           <div class="meta">
-<span>${r.mins} min</span><span>Serves ${r.serves}</span>${heat(r.heat)}${r.veg ? `<span class="veg">Meatless</span>` : ""}${S.onList[r.id] ? `<span class="on">On list</span>` : ""}
+${rt(r) ? `<span class="stars" aria-label="Rated ${rt(r)} of 5">★ ${rt(r)}</span>` : ""}<span>${r.time || r.mins + " min"}</span><span>Serves ${r.serves}</span>${heat(r.heat)}${r.veg ? `<span class="veg">Meatless</span>` : ""}${r.prep ? `<span>Preps ahead</span>` : ""}${r.by ? `<span>${esc(r.by)}</span>` : ""}${S.onList[r.id] ? `<span class="on">On list</span>` : ""}
           </div>
           <p class="blurb">${esc(r.blurb)}</p>
           <div class="actions">
@@ -126,14 +130,19 @@ function recipeSheet(r){
   const draw = () => {
     const sc = sv / r.serves;
     openSheet(`
-      <div class="sheet-head"><div><span class="label">${CATS.find(c=>c[0]===r.cat)[1]} · ${r.mins} min</span><h3>${esc(r.name)}</h3></div>
+      <div class="sheet-head"><div><span class="label">${CATS.find(c=>c[0]===r.cat)[1]} · ${r.time || r.mins + " min"}${r.by ? " · " + esc(r.by) : ""}</span><h3>${esc(r.name)}</h3></div>
         <button class="x" data-close aria-label="Close">✕</button></div>
       <p class="blurb">${esc(r.blurb)}</p>
+      <div class="rate" role="group" aria-label="Your rating">
+        ${[1,2,3,4,5].map(n => `<button type="button" data-rate="${n}" class="${n <= ((S.ratings||{})[r.id]||0) ? "on" : ""}" aria-label="${n} star${n>1?"s":""}" aria-pressed="${((S.ratings||{})[r.id]||0) === n}">★</button>`).join("")}
+        <span class="label">${(S.ratings||{})[r.id] ? "Your rating" : "Tap to rate"}</span>
+      </div>
       <div class="split" style="margin:14px 0 4px">
         <div class="row"><span class="label">Servings</span>
           <div class="stepper"><button id="svm" aria-label="Fewer servings">−</button><output>${sv}</output><button id="svp" aria-label="More servings">+</button></div></div>
         <div class="kcal"><b>${fmt(r.kcal)}</b><small>kcal per serving</small></div>
       </div>
+      ${r.prep ? `<div class="prep"><span class="label">Make ahead</span><p>${esc(r.prep)}</p></div>` : ""}
       <span class="label">Ingredients</span>
       <ul class="ing">${r.ing.map(([n,q,u,s,p]) => `<li class="${p?"staple":""}"><span>${esc(n)}</span><span>${fmtQty(q*sc)} ${esc(u)}</span></li>`).join("")}</ul>
       <span class="label">Steps</span>
@@ -146,6 +155,11 @@ function recipeSheet(r){
         <button class="btn" id="sAdd">Add ${sv} servings to list</button>
         <button class="btn primary" id="sCook">Cooked it</button>
       </div>`);
+    document.querySelectorAll("[data-rate]").forEach(b => b.onclick = () => {
+      const n = +b.dataset.rate; S.ratings = S.ratings || {};
+      if (S.ratings[r.id] === n) delete S.ratings[r.id]; else S.ratings[r.id] = n;
+      save(); renderMeals(); draw();
+    });
     $("#svm").onclick = () => { if (sv > 1) { sv--; draw(); } };
     $("#svp").onclick = () => { if (sv < 12) { sv++; draw(); } };
     $("#sAdd").onclick = () => { addRecipeToList(r, sv); closeSheet(); };
