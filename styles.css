@@ -34,7 +34,10 @@
 
 /* ---------- base ---------- */
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%;min-height:100%}
+/* Always fill the screen, even on short pages like a near-empty grocery list.
+   iOS can float a fixed bottom bar above the edge when the page is shorter than the screen. */
+body{min-height:100vh;min-height:100dvh}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;
   -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;-webkit-tap-highlight-color:transparent;letter-spacing:-.006em}
 /* status-bar band: only visible if the header ever isn't covering it */
