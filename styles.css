@@ -6,6 +6,7 @@
   --accent:#D9480F; --accent-ink:#FFFFFF; --accent-soft:#FDEEE5;
   --chili:#E03131; --chili-soft:#FDECEC;           /* over target, errors */
   --good:#2B8A3E;
+  --chop:#121211;                                  /* logo chopsticks */
   --glass:rgba(255,255,255,.82);
   --scrim:rgba(18,18,17,.32);
   /* legacy token names some markup still uses */
@@ -21,14 +22,14 @@
   --bg:#0E0E0D; --surface:#191918; --surface-2:#232321; --line:#262624;
   --ink:#F2F2EF; --muted:#9D9D97; --faint:#64645F;
   --accent:#FF7A3D; --accent-ink:#170B04; --accent-soft:#2A1810;
-  --chili:#FF6B6B; --chili-soft:#2C1414; --good:#69DB7C;
+  --chili:#FF6B6B; --chili-soft:#2C1414; --good:#69DB7C; --chop:#E3C4A0;
   --glass:rgba(14,14,13,.8); --scrim:rgba(0,0,0,.55);
   color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0E0E0D; --surface:#191918; --surface-2:#232321; --line:#262624;
   --ink:#F2F2EF; --muted:#9D9D97; --faint:#64645F;
   --accent:#FF7A3D; --accent-ink:#170B04; --accent-soft:#2A1810;
-  --chili:#FF6B6B; --chili-soft:#2C1414; --good:#69DB7C;
+  --chili:#FF6B6B; --chili-soft:#2C1414; --good:#69DB7C; --chop:#E3C4A0;
   --glass:rgba(14,14,13,.8); --scrim:rgba(0,0,0,.55);
   color-scheme:dark}
 
