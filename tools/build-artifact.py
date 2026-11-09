@@ -1,4 +1,4 @@
-"""Build a single-file copy of Wok & Cart for the Claude artifact.
+"""Build a single-file copy of Fork Ahead for the Claude artifact.
 Usage: python3 tools/build-artifact.py OUT.html
 Same styles, recipes and app code as the installed app; storage uses the
 artifact's own per-user database instead of Supabase."""
@@ -45,13 +45,13 @@ window.Sync = (function () {
 '''
 about = r'''
 document.getElementById("sync").onclick = () => openSheet(`
-  <div class="sheet-head"><div><span class="label">About</span><h3>Wok &amp; Cart</h3></div><button class="x" data-close aria-label="Close">✕</button></div>
+  <div class="sheet-head"><div><span class="label">About</span><h3>Fork Ahead</h3></div><button class="x" data-close aria-label="Close">✕</button></div>
   <p class="blurb">This copy lives in Claude and saves to your Claude account. The installed phone app keeps its own list and log, synced through its own sign-in.</p>
   <p class="blurb" style="margin-top:10px">Install the app: <b>2hk9sdj886-a11y.github.io/wok-and-cart</b></p>
   <p class="fine">Version __VER__</p>`);
 '''.replace("__VER__", ver)
 
-out = f'''<title>Wok &amp; Cart</title>
+out = f'''<title>Fork Ahead</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 {fonts}

@@ -1,6 +1,6 @@
 /* Account & sync sheet, backups, install prompt, service worker. */
 (function () {
-  const APP_VERSION = "2.3.1";
+  const APP_VERSION = "2.4.0";
 
   function accountSheet() {
     const signedIn = !!Sync.email;
@@ -77,7 +77,7 @@
         const merged = Sync._merge(S, d);
         S = Object.assign(blank(), merged); fixOrder(); save(); renderAll(); closeSheet();
         toast("Backup restored");
-      } catch (e) { toast("That text isn't a Wok & Cart backup"); }
+      } catch (e) { toast("That text isn't a Fork Ahead backup"); }
     };
   }
   document.getElementById("sync").onclick = accountSheet;
@@ -98,7 +98,7 @@
   let deferred = null;
   window.addEventListener("beforeinstallprompt", e => {
     e.preventDefault(); deferred = e;
-    showHint(`<b>Install Wok & Cart</b> for one-tap access and offline use in the store. <button class="btn primary" id="doInstall" style="margin-left:6px">Install</button>`);
+    showHint(`<b>Install Fork Ahead</b> for one-tap access and offline use in the store. <button class="btn primary" id="doInstall" style="margin-left:6px">Install</button>`);
     const b = document.getElementById("doInstall");
     if (b) b.onclick = async () => { deferred.prompt(); await deferred.userChoice; hint.hidden = true; };
   });

@@ -1,4 +1,4 @@
-/* Wok & Cart sync: talks to Supabase's REST API directly (no SDK).
+/* Fork Ahead sync: talks to Supabase's REST API directly (no SDK).
  *
  * Model: one row per user in public.planner_state { user_id, data jsonb, rev bigint }.
  * The app is local-first. Every edit is saved to localStorage and marked dirty.
